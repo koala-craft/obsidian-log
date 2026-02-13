@@ -23,6 +23,20 @@ function ArticleDetail() {
       </Link>
       <article className="prose prose-invert prose-zinc prose-lg max-w-none prose-headings:font-semibold prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline">
         <h1 className="text-3xl font-bold mb-2">{article.title}</h1>
+        {article.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {article.tags.map((t) => (
+              <Link
+                key={t}
+                to="/articles"
+                search={{ tag: t }}
+                className="text-sm px-2.5 py-1 rounded bg-zinc-700/50 text-zinc-400 hover:bg-zinc-600/50 hover:text-zinc-300"
+              >
+                {t}
+              </Link>
+            ))}
+          </div>
+        )}
         <p className="text-zinc-500 text-sm mb-8 -mt-2">{article.createdAt}</p>
         <div className="prose-p:leading-relaxed prose-li:my-0.5">
           <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{article.content}</ReactMarkdown>

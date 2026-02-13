@@ -1,7 +1,7 @@
 ---
 title: サンプル記事
 createdAt: 2026-02-14
-tags: ["sample", "obsidian-log"]
+topics: ["sample", "obsidian-log"]
 visibility: public
 type: article
 ---

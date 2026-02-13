@@ -8,6 +8,42 @@ import type { Article } from './types'
 
 const CONTENT_DIR = path.join(process.cwd(), 'content')
 
+/**
+ * frontmatter から topics をパース（Zenn 形式）
+ * - topics: ["a", "b"] のインライン配列
+ * - topics:\n  - a\n  - b の YAML リスト形式
+ */
+function parseTopicsFromFrontmatter(frontmatter: string): string[] {
+  const tags: string[] = []
+
+  // 形式1: topics: ["a", "b"] または topics: [a, b]
+  const inlineMatch = frontmatter.match(/topics:\s*\[([^\]]*)\]/)
+  if (inlineMatch) {
+    const raw = inlineMatch[1]
+    if (raw.trim()) {
+      tags.push(
+        ...raw.split(',').map((t) => t.trim().replace(/^['"]|['"]$/g, ''))
+      )
+    }
+    return tags.filter(Boolean)
+  }
+
+  // 形式2: topics:\n  - a\n  - b
+  const listMatch = frontmatter.match(/topics:\s*\n((?:\s+-\s*.+\n?)+)/)
+  if (listMatch) {
+    const lines = listMatch[1].split('\n')
+    for (const line of lines) {
+      const itemMatch = line.match(/^\s+-\s+(.+)$/)
+      if (itemMatch) {
+        const val = itemMatch[1].trim().replace(/^['"]|['"]$/g, '')
+        if (val) tags.push(val)
+      }
+    }
+  }
+
+  return tags
+}
+
 function parseArticle(content: string, slug: string): Article | null {
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
   if (!frontmatterMatch) return null
@@ -18,10 +54,8 @@ function parseArticle(content: string, slug: string): Article | null {
     frontmatter.match(/createdAt:\s*(.+)/)?.[1]?.trim() ??
     frontmatter.match(/published_at:\s*(.+)/)?.[1]?.trim() ??
     ''
-  const tagsMatch = frontmatter.match(/(?:tags|topics):\s*\[(.*?)\]/)
-  const tags = tagsMatch
-    ? tagsMatch[1].split(',').map((t) => t.trim().replace(/^['"]|['"]$/g, ''))
-    : []
+  // タグは topics から取得（Zenn 形式）
+  const tags = parseTopicsFromFrontmatter(frontmatter)
   // visibility: 明示指定 > Zenn の published > デフォルト public
   let visibility: 'public' | 'private' = 'public'
   const visibilityVal = frontmatter.match(/visibility:\s*(.+)/)?.[1]?.trim()

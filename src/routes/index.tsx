@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { getArticles } from '~/features/articles/api'
 import { getScraps } from '~/features/scraps/api'
+import { parseScrapTitle } from '~/features/scraps/parseScrapTitle'
 import { fetchTaskSummary } from '~/features/tasks/api'
 
 export const Route = createFileRoute('/')({
@@ -65,17 +66,20 @@ function HomePage() {
       <section>
         <h2 className="text-xl font-semibold mb-4">最新スクラップ</h2>
         <ul className="space-y-2">
-          {scraps.slice(0, 5).map((s) => (
-            <li key={s.slug}>
-              <Link
-                to="/scraps/$slug"
-                params={{ slug: s.slug }}
-                className="text-cyan-400 hover:underline"
-              >
-                {s.title}
-              </Link>
-            </li>
-          ))}
+          {scraps.slice(0, 5).map((s) => {
+            const { displayTitle } = parseScrapTitle(s.title)
+            return (
+              <li key={s.slug}>
+                <Link
+                  to="/scraps/$slug"
+                  params={{ slug: s.slug }}
+                  className="text-cyan-400 hover:underline"
+                >
+                  {displayTitle || s.title}
+                </Link>
+              </li>
+            )
+          })}
           {scraps.length === 0 && (
             <li className="text-zinc-500">スクラップがありません</li>
           )}
