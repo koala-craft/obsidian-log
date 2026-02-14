@@ -1,14 +1,18 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   getGithubRepoUrl,
   getZennUsername,
   getSiteHeader,
+  getAuthorIcon,
   setSiteConfigAll,
   validateGithubRepoUrl,
   validateZennUsername,
   validateSiteHeader,
 } from '~/features/admin/siteConfig'
+import { uploadAuthorIcon } from '~/features/admin/configApi'
+import { getSession } from '~/features/admin/auth'
+import { getBlogImageSrc } from '~/shared/lib/blogImageUrl'
 
 export const Route = createFileRoute('/admin/settings')({
   component: AdminSettings,
@@ -20,6 +24,8 @@ function AdminSettings() {
   const [zennUsername, setZennUsernameState] = useState('')
   const [siteTitle, setSiteTitle] = useState('')
   const [siteSubtitle, setSiteSubtitle] = useState('')
+  const [authorIcon, setAuthorIcon] = useState('')
+  const [authorIconUploading, setAuthorIconUploading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -27,17 +33,88 @@ function AdminSettings() {
   useEffect(() => {
     const LOAD_TIMEOUT_MS = 15_000
     const timer = setTimeout(() => setLoading(false), LOAD_TIMEOUT_MS)
-    Promise.all([getGithubRepoUrl(), getZennUsername(), getSiteHeader()])
-      .then(([repoUrl, username, header]) => {
+    Promise.all([getGithubRepoUrl(), getZennUsername(), getSiteHeader(), getAuthorIcon()])
+      .then(([repoUrl, username, header, icon]) => {
         setUrl(repoUrl)
         setZennUsernameState(username)
         setSiteTitle(header.title)
         setSiteSubtitle(header.subtitle)
+        setAuthorIcon(icon)
       })
       .finally(() => {
         clearTimeout(timer)
         setLoading(false)
       })
+  }, [])
+
+  const handleAuthorIconDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (!file?.type.startsWith('image/')) return
+    setAuthorIconUploading(true)
+    setMessage(null)
+    try {
+      const buf = await file.arrayBuffer()
+      const base64 = btoa(
+        new Uint8Array(buf).reduce((acc, b) => acc + String.fromCharCode(b), '')
+      )
+      const session = await getSession()
+      if (!session) {
+        setMessage({ type: 'error', text: 'ログインが必要です' })
+        return
+      }
+      const result = await uploadAuthorIcon({
+        data: {
+          accessToken: session.session.access_token,
+          providerToken: session.session.provider_token ?? undefined,
+          contentBase64: base64,
+          filename: file.name,
+        },
+      })
+      if (result.success) {
+        setAuthorIcon(result.url)
+        setMessage({ type: 'success', text: '作者アイコンをアップロードしました。保存ボタンで反映されます。' })
+      } else {
+        setMessage({ type: 'error', text: result.error ?? 'アップロードに失敗しました' })
+      }
+    } finally {
+      setAuthorIconUploading(false)
+    }
+  }, [])
+
+  const handleAuthorIconPaste = useCallback(async (e: React.ClipboardEvent) => {
+    const file = e.clipboardData.files[0]
+    if (!file?.type.startsWith('image/')) return
+    e.preventDefault()
+    setAuthorIconUploading(true)
+    setMessage(null)
+    try {
+      const buf = await file.arrayBuffer()
+      const base64 = btoa(
+        new Uint8Array(buf).reduce((acc, b) => acc + String.fromCharCode(b), '')
+      )
+      const session = await getSession()
+      if (!session) {
+        setMessage({ type: 'error', text: 'ログインが必要です' })
+        return
+      }
+      const result = await uploadAuthorIcon({
+        data: {
+          accessToken: session.session.access_token,
+          providerToken: session.session.provider_token ?? undefined,
+          contentBase64: base64,
+          filename: file.name,
+        },
+      })
+      if (result.success) {
+        setAuthorIcon(result.url)
+        setMessage({ type: 'success', text: '作者アイコンをアップロードしました。保存ボタンで反映されます。' })
+      } else {
+        setMessage({ type: 'error', text: result.error ?? 'アップロードに失敗しました' })
+      }
+    } finally {
+      setAuthorIconUploading(false)
+    }
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +141,7 @@ function AdminSettings() {
       zenn_username: zennUsername,
       site_title: siteTitle,
       site_subtitle: siteSubtitle,
+      author_icon: authorIcon,
     })
     setSaving(false)
     if (result.success) {
@@ -121,6 +199,44 @@ function AdminSettings() {
             disabled={saving}
           />
           <p className="text-xs text-zinc-500 mt-1">タイトル直下に表示されます。</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-zinc-300 mb-2">
+            作者アイコン
+          </label>
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleAuthorIconDrop}
+            onPaste={handleAuthorIconPaste}
+            className={`flex items-center justify-center gap-2 rounded border border-dashed transition min-h-[120px] max-w-[200px] ${
+              authorIconUploading
+                ? 'border-cyan-500/50 bg-cyan-900/20'
+                : 'border-zinc-700/80 bg-zinc-800/50 hover:border-zinc-600/80'
+            }`}
+          >
+            {authorIcon && !authorIconUploading ? (
+              <>
+                <img
+                  src={getBlogImageSrc(authorIcon)}
+                  alt=""
+                  className="w-20 h-20 rounded-full object-cover shrink-0"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAuthorIcon('')}
+                  className="text-xs text-zinc-500 hover:text-red-400 transition"
+                >
+                  削除
+                </button>
+              </>
+            ) : authorIconUploading ? (
+              <span className="text-sm text-cyan-400">アップロード中...</span>
+            ) : (
+              <span className="text-sm text-zinc-500">画像をドロップまたは貼り付け</span>
+            )}
+          </div>
+          <p className="text-xs text-zinc-500 mt-1">Author ページに表示。Blog-Repo の .obsidian-log/ に保存。png, jpg, gif, webp 対応。</p>
         </div>
 
         <div>

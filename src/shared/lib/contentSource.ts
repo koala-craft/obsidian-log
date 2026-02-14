@@ -13,3 +13,8 @@ export async function getZennUsernameForServer(): Promise<string> {
   const { getZennUsernameForServer } = await import('./config')
   return getZennUsernameForServer()
 }
+
+export async function getAuthorIconForServer(): Promise<string> {
+  const { getAuthorIconForServer } = await import('./config')
+  return getAuthorIconForServer()
+}

@@ -12,13 +12,16 @@ import { DefaultCatchBoundary } from '~/shared/components/DefaultCatchBoundary'
 import { HeaderNav } from '~/shared/components/HeaderNav'
 import { Footer } from '~/shared/components/Footer'
 import { NotFound } from '~/shared/components/NotFound'
-import { getZennUsernameForServer } from '~/shared/lib/contentSource'
+import { getConfig } from '~/features/admin/configApi'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
   loader: async () => {
-    const zennUsername = await getZennUsernameForServer()
-    return { zennUsername }
+    const config = await getConfig()
+    return {
+      zennUsername: config.zenn_username?.trim() ?? '',
+      authorIcon: config.author_icon?.trim() ?? '',
+    }
   },
   head: () => ({
     meta: [

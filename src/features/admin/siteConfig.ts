@@ -57,6 +57,11 @@ export async function getSiteHeader(): Promise<{ title: string; subtitle: string
   }
 }
 
+export async function getAuthorIcon(): Promise<string> {
+  const config = await getConfig()
+  return config.author_icon ?? ''
+}
+
 
 export async function setGithubRepoUrl(url: string): Promise<{ success: boolean; error?: string }> {
   const validation = validateGithubRepoUrl(url)
@@ -98,6 +103,21 @@ export async function setSiteHeader(
   return setConfigPartial({ site_title: title.trim(), site_subtitle: subtitle.trim() })
 }
 
+const AUTHOR_ICON_MAX_LENGTH = 2000
+
+export function validateAuthorIcon(url: string): { valid: boolean; error?: string } {
+  if (url === '') return { valid: true }
+  if (url.length > AUTHOR_ICON_MAX_LENGTH) {
+    return { valid: false, error: `${AUTHOR_ICON_MAX_LENGTH}文字以内で入力してください` }
+  }
+  const trimmed = url.trim()
+  if (trimmed.startsWith('https://raw.githubusercontent.com/')) return { valid: true }
+  if (trimmed.startsWith('.obsidian-log/') && /\.(png|jpg|jpeg|gif|webp)$/i.test(trimmed)) {
+    return { valid: true }
+  }
+  return { valid: false, error: '有効な画像 URL を入力してください' }
+}
+
 /**
  * サイト設定を一括保存（競合を防ぎ、GitHub API 呼び出しを 1 回に抑える）
  */
@@ -106,6 +126,7 @@ export async function setSiteConfigAll(params: {
   zenn_username: string
   site_title: string
   site_subtitle: string
+  author_icon?: string
 }): Promise<{ success: boolean; error?: string }> {
   const urlValidation = validateGithubRepoUrl(params.github_repo_url)
   if (!urlValidation.valid) {
@@ -119,17 +140,24 @@ export async function setSiteConfigAll(params: {
   if (!headerValidation.valid) {
     return { success: false, error: headerValidation.error }
   }
+  if (params.author_icon !== undefined) {
+    const iconValidation = validateAuthorIcon(params.author_icon)
+    if (!iconValidation.valid) {
+      return { success: false, error: iconValidation.error }
+    }
+  }
   return setConfigPartial({
     github_repo_url: params.github_repo_url,
     zenn_username: params.zenn_username,
     site_title: params.site_title.trim(),
     site_subtitle: params.site_subtitle.trim(),
+    author_icon: params.author_icon?.trim(),
   })
 }
 
 async function setConfigPartial(
   partial: Partial<
-    Pick<AppConfig, 'github_repo_url' | 'zenn_username' | 'site_title' | 'site_subtitle'>
+    Pick<AppConfig, 'github_repo_url' | 'zenn_username' | 'site_title' | 'site_subtitle' | 'author_icon'>
   >
 ): Promise<{ success: boolean; error?: string }> {
   const { getSession } = await import('./auth')
@@ -146,6 +174,7 @@ async function setConfigPartial(
       admins: current.admins,
       site_title: partial.site_title ?? current.site_title ?? '',
       site_subtitle: partial.site_subtitle ?? current.site_subtitle ?? '',
+      author_icon: partial.author_icon !== undefined ? partial.author_icon : current.author_icon ?? '',
     },
   })
   return result

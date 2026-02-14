@@ -214,3 +214,20 @@ export async function fetchRawFileBinary(downloadUrl: string): Promise<ArrayBuff
   if (!res.ok) return null
   return res.arrayBuffer()
 }
+
+/**
+ * owner/repo/path から画像を取得。main → master の順でブランチを試行
+ * （リポジトリのデフォルトブランチが master の場合に対応）
+ */
+export async function fetchRawFileBinaryWithBranchFallback(
+  owner: string,
+  repo: string,
+  filePath: string
+): Promise<ArrayBuffer | null> {
+  for (const branch of ['main', 'master']) {
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`
+    const buf = await fetchRawFileBinary(url)
+    if (buf) return buf
+  }
+  return null
+}

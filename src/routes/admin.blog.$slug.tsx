@@ -80,6 +80,7 @@ function AdminBlogEdit() {
           .filter(Boolean),
         visibility: meta.visibility,
         firstView: prepared.firstView,
+        previousFirstView: initialPost.firstView,
       },
     })
     setSaving(false)

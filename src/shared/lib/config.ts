@@ -20,6 +20,8 @@ export interface AppConfig {
   site_title?: string
   /** トップページの h1 直下の説明文 */
   site_subtitle?: string
+  /** 作者アイコン URL（raw.githubusercontent.com） */
+  author_icon?: string
 }
 
 const CONFIG_PATHS = ['.obsidian-log/config.json', 'content/.obsidian-log/config.json']
@@ -60,6 +62,7 @@ function parseConfigJson(raw: string): AppConfig {
         : [],
       site_title: typeof parsed.site_title === 'string' ? parsed.site_title : '',
       site_subtitle: typeof parsed.site_subtitle === 'string' ? parsed.site_subtitle : '',
+      author_icon: typeof parsed.author_icon === 'string' ? parsed.author_icon.trim() : '',
     }
   } catch {
     return { ...DEFAULT_CONFIG }
@@ -144,6 +147,11 @@ export async function getGithubRepoUrlForServer(): Promise<string> {
 export async function getZennUsernameForServer(): Promise<string> {
   const config = await getConfigForServer()
   return config.zenn_username.trim()
+}
+
+export async function getAuthorIconForServer(): Promise<string> {
+  const config = await getConfigForServer()
+  return config.author_icon?.trim() ?? ''
 }
 
 /**

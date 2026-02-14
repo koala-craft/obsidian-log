@@ -18,6 +18,24 @@ import { saveTempImage, clearTempAssets, readTempImage } from '~/shared/lib/blog
 import type { BlogPost } from './types'
 
 const BLOG_DIR = 'blog'
+const RAW_PREFIX = 'https://raw.githubusercontent.com/'
+
+/** raw URL から blog/assets/ 配下のファイルパスを取得。自リポジトリ以外は null */
+function getFirstViewPathFromRawUrl(
+  rawUrl: string,
+  owner: string,
+  repo: string
+): string | null {
+  if (!rawUrl.startsWith(RAW_PREFIX)) return null
+  const pathStr = rawUrl.slice(RAW_PREFIX.length)
+  const parts = pathStr.split('/')
+  if (parts.length < 6) return null
+  const [urlOwner, urlRepo, , ...rest] = parts
+  if (urlOwner !== owner || urlRepo !== repo) return null
+  const filePath = rest.join('/')
+  if (!filePath.startsWith('blog/assets/') || filePath.includes('..')) return null
+  return filePath
+}
 
 function getGitHubUsername(user: { user_metadata?: Record<string, unknown> }): string | null {
   const meta = user.user_metadata
@@ -132,6 +150,8 @@ export type UpdateBlogPostInput = {
   tags?: string[]
   visibility?: 'public' | 'private'
   firstView?: string
+  /** 保存前のファーストビュー URL。削除・差し替え時に旧画像を GitHub から削除するため */
+  previousFirstView?: string
 }
 
 export const updateBlogPost = createServerFn({ method: 'POST' })
@@ -188,7 +208,7 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
 
     const content = buildMarkdownContent(post)
 
-    return updateFileOnGitHub(
+    const result = await updateFileOnGitHub(
       parsed.owner,
       parsed.repo,
       path,
@@ -197,6 +217,34 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
       token,
       sha
     )
+    if (!result.success) return result
+
+    // マークダウン更新成功後: 未使用の旧ファーストビュー画像を GitHub から削除
+    const newFirstViewPath = post.firstView
+      ? getFirstViewPathFromRawUrl(post.firstView, parsed.owner, parsed.repo)
+      : null
+    const prevPath = data.previousFirstView?.trim()
+      ? getFirstViewPathFromRawUrl(
+          data.previousFirstView.trim(),
+          parsed.owner,
+          parsed.repo
+        )
+      : null
+    if (prevPath && prevPath !== newFirstViewPath) {
+      const prevSha = await getFileSha(parsed.owner, parsed.repo, prevPath, token)
+      if (prevSha) {
+        await deleteFileOnGitHub(
+          parsed.owner,
+          parsed.repo,
+          prevPath,
+          'blog: remove unused firstview',
+          token,
+          prevSha
+        )
+      }
+    }
+
+    return result
   })
 
 export type SaveBlogImageToTempInput = {
