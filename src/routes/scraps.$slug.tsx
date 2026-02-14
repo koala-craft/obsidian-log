@@ -33,7 +33,7 @@ function ScrapDetail() {
   const totalComments = countComments(scrap.comments)
 
   return (
-    <article className="max-w-3xl mx-auto px-4">
+    <article className="max-w-3xl mx-auto px-4 pb-60">
       {/* ヘッダー: タイトル・メタ・タグを一覧で把握 */}
       <header className="mb-10">
         <h1 className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight">
