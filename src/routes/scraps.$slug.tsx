@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getScrap } from '~/features/scraps/api'
 import { MarkdownWithLinkCards } from '~/shared/components/MarkdownWithLinkCards'
@@ -98,6 +99,19 @@ function ScrapDetail() {
 const PROSE_BASE =
   'prose prose-invert prose-zinc max-w-none prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-p:leading-[1.7] prose-li:my-0.5 prose-headings:font-semibold'
 
+function GitHubAvatar({ username }: { username: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return null
+  return (
+    <img
+      src={`https://avatars.githubusercontent.com/${encodeURIComponent(username)}?s=64`}
+      alt=""
+      className="w-8 h-8 rounded-full flex-shrink-0 bg-zinc-700/60"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 function CommentBlock({
   comment,
   depth,
@@ -107,19 +121,24 @@ function CommentBlock({
 }) {
   const proseClass = `${PROSE_BASE} prose-sm`
 
+  const isParent = (depth ?? 0) === 0
+
   return (
     <div
       className={
-        (depth ?? 0) > 0
-          ? 'ml-4 pl-5 border-l-2 border-zinc-600/80 py-4'
-          : 'pl-5 border-l-2 border-zinc-600/60 py-4'
+        isParent
+          ? 'rounded-lg border border-zinc-700/80 bg-zinc-900/50 p-5 transition hover:border-cyan-500/40 hover:bg-zinc-800/60'
+          : 'ml-4 pl-5 border-l-2 border-zinc-600/80 py-4'
       }
     >
-      <div className="flex items-baseline gap-2 text-sm text-zinc-500 mb-3">
-        <span className="font-medium text-zinc-300">{comment.author}</span>
-        <time dateTime={comment.created_at} className="text-xs">
-          {comment.created_at}
-        </time>
+      <div className="flex items-center gap-3 text-sm text-zinc-500 mb-3">
+        <GitHubAvatar username={comment.author} />
+        <div className="flex items-baseline gap-2">
+          <span className="font-medium text-zinc-300">{comment.author}</span>
+          <time dateTime={comment.created_at} className="text-xs">
+            {comment.created_at}
+          </time>
+        </div>
       </div>
       <MarkdownWithLinkCards
         content={comment.body_markdown}

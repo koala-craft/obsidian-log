@@ -4,6 +4,22 @@
  */
 
 const GITHUB_API = 'https://api.github.com'
+const FETCH_TIMEOUT_MS = 20_000
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeout?: number } = {}
+): Promise<Response> {
+  const { timeout = FETCH_TIMEOUT_MS, ...init } = options
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal })
+    return res
+  } finally {
+    clearTimeout(timer)
+  }
+}
 const GITHUB_REPO_URL_REGEX = /^https:\/\/github\.com\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+\/?$/
 
 export function isValidGithubRepoUrl(url: string): boolean {
@@ -39,7 +55,7 @@ export async function fetchDirectory(
   const headers: Record<string, string> = { ...GITHUB_HEADERS }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`,
     { headers }
   )
@@ -61,7 +77,7 @@ export async function fetchFileContent(
   const headers: Record<string, string> = { ...GITHUB_HEADERS }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`,
     { headers }
   )
@@ -72,7 +88,7 @@ export async function fetchFileContent(
     return Buffer.from(data.content, 'base64').toString('utf-8')
   }
   if (data.download_url) {
-    const raw = await fetch(data.download_url)
+    const raw = await fetchWithTimeout(data.download_url, { headers })
     if (raw.ok) return raw.text()
   }
   return null
@@ -86,7 +102,7 @@ export async function fetchRawFile(downloadUrl: string): Promise<string | null> 
   const headers: Record<string, string> = { ...GITHUB_HEADERS }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(downloadUrl, { headers })
+  const res = await fetchWithTimeout(downloadUrl, { headers })
   if (!res.ok) return null
   return res.text()
 }

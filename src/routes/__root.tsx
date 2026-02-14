@@ -1,13 +1,13 @@
 /// <reference types="vite/client" />
 import {
   HeadContent,
-  Link,
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/shared/components/DefaultCatchBoundary'
+import { HeaderNav } from '~/shared/components/HeaderNav'
 import { NotFound } from '~/shared/components/NotFound'
 import appCss from '~/styles/app.css?url'
 
@@ -37,44 +37,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="bg-zinc-950 text-zinc-100 min-h-screen">
         <header className="border-b border-zinc-800">
-          <nav className="max-w-4xl mx-auto px-4 py-4 flex gap-6">
-            <Link
-              to="/"
-              activeProps={{ className: 'font-bold text-cyan-400' }}
-              activeOptions={{ exact: true }}
-              className="hover:text-cyan-400 transition"
-            >
-              トップ
-            </Link>
-            <Link
-              to="/articles"
-              activeProps={{ className: 'font-bold text-cyan-400' }}
-              className="hover:text-cyan-400 transition"
-            >
-              記事
-            </Link>
-            <Link
-              to="/scraps"
-              activeProps={{ className: 'font-bold text-cyan-400' }}
-              className="hover:text-cyan-400 transition"
-            >
-              スクラップ
-            </Link>
-            <Link
-              to="/tasks"
-              activeProps={{ className: 'font-bold text-cyan-400' }}
-              className="hover:text-cyan-400 transition"
-            >
-              タスク
-            </Link>
-            <Link
-              to="/admin"
-              activeProps={{ className: 'font-bold text-cyan-400' }}
-              className="hover:text-cyan-400 transition ml-auto"
-            >
-              管理
-            </Link>
-          </nav>
+          <HeaderNav />
         </header>
         <main>{children}</main>
         <TanStackRouterDevtools position="bottom-right" />

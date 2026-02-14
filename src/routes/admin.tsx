@@ -1,10 +1,12 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import { useAuth } from '~/features/admin/useAuth'
+import { AuthDebugInfo } from '~/features/admin/AuthDebugInfo'
 import { ForbiddenMessage } from '~/features/admin/ForbiddenMessage'
 import { LoginForm } from '~/features/admin/LoginForm'
 
 export const Route = createFileRoute('/admin')({
   component: AdminLayout,
+  ssr: false, // useAuth はブラウザAPI（sessionStorage等）に依存するためクライアントのみでレンダリング
 })
 
 function AdminLayout() {
@@ -77,6 +79,7 @@ function AdminLayout() {
         </button>
       </nav>
       <Outlet />
+      <AuthDebugInfo />
     </div>
   )
 }

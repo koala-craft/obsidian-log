@@ -1,7 +1,22 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { getSupabase } from '~/shared/lib/supabase'
-import { checkIsAdmin, signInWithGitHub, signOut } from './auth'
+import { getSupabase, resetSupabaseClient } from '~/shared/lib/supabase'
+import type { CheckAdminResult } from './auth'
+import {
+  checkIsAdmin,
+  clearAdminCache,
+  setAdminCache,
+  signInWithGitHub,
+  signOut,
+} from './auth'
+import {
+  AUTH_TIMEOUT_MS,
+  INIT_DELAY_MS,
+  OAUTH_CALLBACK_DELAY_MS,
+  OAUTH_CALLBACK_RETRY_COUNT,
+  resolveAdminState,
+  VISIBILITY_DELAY_MS,
+} from './authFlow'
 
 export type AuthState = {
   user: User | null
@@ -25,52 +40,133 @@ export function useAuth(): AuthState {
     }
 
     const init = async () => {
-      const isOAuthCallback =
-        typeof window !== 'undefined' &&
-        /[#&](access_token|refresh_token|code)=/.test(
-          window.location.hash + window.location.search
+      try {
+        await new Promise((r) => setTimeout(r, INIT_DELAY_MS))
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Auth timeout')), AUTH_TIMEOUT_MS)
         )
 
-      let { data: { session } } = await supabase.auth.getSession()
+        const run = async () => {
+          const isOAuthCallback =
+            typeof window !== 'undefined' &&
+            /[#&](access_token|refresh_token|code)=/.test(
+              window.location.hash + window.location.search
+            )
 
-      // OAuth コールバック直後はハッシュ処理が完了するまで待つ（ログイン画面の一瞬表示を防ぐ）
-      if (!session?.user && isOAuthCallback) {
-        for (let i = 0; i < 5; i++) {
-          await new Promise((r) => setTimeout(r, 200))
-          const retry = await supabase.auth.getSession()
-          if (retry.data.session?.user) {
-            session = retry.data.session
-            break
+          let { data: { session } } = await supabase.auth.getSession()
+
+          if (!session?.user && isOAuthCallback) {
+            for (let i = 0; i < OAUTH_CALLBACK_RETRY_COUNT; i++) {
+              await new Promise((r) => setTimeout(r, OAUTH_CALLBACK_DELAY_MS))
+              const retry = await supabase.auth.getSession()
+              if (retry.data.session?.user) {
+                session = retry.data.session
+                break
+              }
+            }
+          }
+
+          if (!session?.user) {
+            setUser(null)
+            setIsAdmin(false)
+            setAdminChecked(true)
+            setLoading(false)
+            return
+          }
+
+          setUser(session.user)
+          const { isAdmin: admin } = await resolveAdminState(supabase, session, {
+            useCache: true,
+          })
+          setIsAdmin(admin)
+          setAdminChecked(true)
+          setLoading(false)
+
+          if (admin) {
+            supabase.auth
+              .refreshSession()
+              .then(({ data: { session: r } }) => {
+                const s = r ?? session
+                return checkIsAdmin(s.user.id)
+              })
+              .then((res: CheckAdminResult) => {
+                if (res.ok && res.isAdmin) setAdminCache(session.user.id, true)
+              })
+              .catch((e) => {
+                if (import.meta.env.DEV) console.error('[Auth] background refresh failed', e)
+              })
           }
         }
-      }
 
-      if (!session?.user) {
+        await Promise.race([run(), timeoutPromise])
+      } catch (e) {
+        if (import.meta.env.DEV) console.error('[Auth] init failed', e)
         setUser(null)
         setIsAdmin(false)
         setAdminChecked(true)
         setLoading(false)
-        return
       }
-      setUser(session.user)
-      const admin = await checkIsAdmin(session.user.id)
-      setIsAdmin(admin)
-      setAdminChecked(true)
-      setLoading(false)
     }
 
     init()
 
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        resetSupabaseClient()
+        const freshSupabase = getSupabase()
+        if (!freshSupabase) return
+        await new Promise((r) => setTimeout(r, VISIBILITY_DELAY_MS))
+        const { data: { session } } = await freshSupabase.auth.getSession()
+        if (!session?.user) return
+        setUser(session.user)
+        const { isAdmin: admin } = await resolveAdminState(freshSupabase, session, {
+          useCache: true,
+        })
+        setIsAdmin(admin)
+        setAdminChecked(true)
+      } catch (e) {
+        if (import.meta.env.DEV) console.error('[Auth] visibilitychange failed', e)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user)
-          setAdminChecked(false)
-          const admin = await checkIsAdmin(session.user.id)
-          setIsAdmin(admin)
-          setAdminChecked(true)
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null)
+        if (event === 'TOKEN_REFRESHED') {
+          if (import.meta.env.DEV) {
+            console.log('[Auth] トークン自動リフレッシュ完了', {
+              expiresAt: session?.expires_at
+                ? new Date(session.expires_at * 1000).toLocaleString()
+                : null,
+            })
+          }
+          return
+        }
+        try {
+          if (event === 'SIGNED_IN' && session?.user) {
+            setUser(session.user)
+            setAdminChecked(false)
+            const supabase = getSupabase()
+            const { isAdmin: admin } = supabase
+              ? await Promise.race([
+                  resolveAdminState(supabase, session, { useCache: false }),
+                  new Promise<{ isAdmin: boolean }>((_, reject) =>
+                    setTimeout(() => reject(new Error('Auth timeout')), AUTH_TIMEOUT_MS)
+                  ),
+                ])
+              : { isAdmin: false }
+            if (admin) setAdminCache(session.user.id, true)
+            setIsAdmin(admin)
+            setAdminChecked(true)
+          } else if (event === 'SIGNED_OUT') {
+            clearAdminCache()
+            setUser(null)
+            setIsAdmin(false)
+            setAdminChecked(true)
+          }
+        } catch (e) {
+          if (import.meta.env.DEV) console.error('[Auth] onAuthStateChange failed', e)
           setIsAdmin(false)
           setAdminChecked(true)
         }
@@ -78,10 +174,12 @@ export function useAuth(): AuthState {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      subscription.unsubscribe()
+    }
   }, [])
 
-  // 管理者チェック完了まで loading 扱い（ForbiddenMessage の一瞬表示を防ぐ）
   const effectiveLoading = loading || (user !== null && !adminChecked)
 
   return {

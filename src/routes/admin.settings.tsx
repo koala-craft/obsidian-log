@@ -21,11 +21,17 @@ function AdminSettings() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
-    Promise.all([getGithubRepoUrl(), getZennUsername()]).then(([repoUrl, username]) => {
-      setUrl(repoUrl)
-      setZennUsernameState(username)
-      setLoading(false)
-    })
+    const LOAD_TIMEOUT_MS = 15_000
+    const timer = setTimeout(() => setLoading(false), LOAD_TIMEOUT_MS)
+    Promise.all([getGithubRepoUrl(), getZennUsername()])
+      .then(([repoUrl, username]) => {
+        setUrl(repoUrl)
+        setZennUsernameState(username)
+      })
+      .finally(() => {
+        clearTimeout(timer)
+        setLoading(false)
+      })
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {

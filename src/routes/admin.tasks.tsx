@@ -38,9 +38,18 @@ function AdminTasks() {
 
   const loadTasks = async () => {
     setLoading(true)
-    const list = await fetchAdminTasks()
-    setTasks(list)
-    setLoading(false)
+    const LOAD_TIMEOUT_MS = 15_000
+    const timeoutPromise = new Promise<Task[]>((_, reject) =>
+      setTimeout(() => reject(new Error('Load timeout')), LOAD_TIMEOUT_MS)
+    )
+    try {
+      const list = await Promise.race([fetchAdminTasks(), timeoutPromise])
+      setTasks(list)
+    } catch {
+      setTasks([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
