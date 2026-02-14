@@ -21,16 +21,22 @@ export function Footer() {
               About
             </Link>
             <Link
+              to="/blog"
+              className="text-sm text-zinc-500 hover:text-cyan-400 transition"
+            >
+              Blog
+            </Link>
+            <Link
               to="/contact"
               className="text-sm text-zinc-500 hover:text-cyan-400 transition"
             >
               Contact
             </Link>
             <Link
-              to="/blog"
+              to="/author"
               className="text-sm text-zinc-500 hover:text-cyan-400 transition"
             >
-              Blog
+              Author
             </Link>
             <a
               href="https://github.com/koala-craft"

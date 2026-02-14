@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScrapsRouteImport } from './routes/scraps'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BlogRouteImport } from './routes/blog'
+import { Route as AuthorRouteImport } from './routes/author'
 import { Route as ArticlesRouteImport } from './routes/articles'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
@@ -23,6 +24,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ScrapsSlugRouteImport } from './routes/scraps.$slug'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ArticlesSlugRouteImport } from './routes/articles.$slug'
+import { Route as ApiContactRouteImport } from './routes/api.contact'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
 import { Route as AdminBlogIndexRouteImport } from './routes/admin.blog.index'
@@ -44,6 +46,11 @@ const ContactRoute = ContactRouteImport.update({
 const BlogRoute = BlogRouteImport.update({
   id: '/blog',
   path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthorRoute = AuthorRouteImport.update({
+  id: '/author',
+  path: '/author',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArticlesRoute = ArticlesRouteImport.update({
@@ -101,6 +108,11 @@ const ArticlesSlugRoute = ArticlesSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => ArticlesRoute,
 } as any)
+const ApiContactRoute = ApiContactRouteImport.update({
+  id: '/api/contact',
+  path: '/api/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -142,11 +154,13 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
   '/articles': typeof ArticlesRouteWithChildren
+  '/author': typeof AuthorRoute
   '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/scraps': typeof ScrapsRouteWithChildren
   '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/contact': typeof ApiContactRoute
   '/articles/$slug': typeof ArticlesSlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/scraps/$slug': typeof ScrapsSlugRoute
@@ -163,8 +177,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/author': typeof AuthorRoute
   '/contact': typeof ContactRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/contact': typeof ApiContactRoute
   '/articles/$slug': typeof ArticlesSlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/scraps/$slug': typeof ScrapsSlugRoute
@@ -184,11 +200,13 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
   '/articles': typeof ArticlesRouteWithChildren
+  '/author': typeof AuthorRoute
   '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/scraps': typeof ScrapsRouteWithChildren
   '/admin/blog': typeof AdminBlogRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/contact': typeof ApiContactRoute
   '/articles/$slug': typeof ArticlesSlugRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/scraps/$slug': typeof ScrapsSlugRoute
@@ -209,11 +227,13 @@ export interface FileRouteTypes {
     | '/about'
     | '/admin'
     | '/articles'
+    | '/author'
     | '/blog'
     | '/contact'
     | '/scraps'
     | '/admin/blog'
     | '/admin/settings'
+    | '/api/contact'
     | '/articles/$slug'
     | '/blog/$slug'
     | '/scraps/$slug'
@@ -230,8 +250,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/author'
     | '/contact'
     | '/admin/settings'
+    | '/api/contact'
     | '/articles/$slug'
     | '/blog/$slug'
     | '/scraps/$slug'
@@ -250,11 +272,13 @@ export interface FileRouteTypes {
     | '/about'
     | '/admin'
     | '/articles'
+    | '/author'
     | '/blog'
     | '/contact'
     | '/scraps'
     | '/admin/blog'
     | '/admin/settings'
+    | '/api/contact'
     | '/articles/$slug'
     | '/blog/$slug'
     | '/scraps/$slug'
@@ -274,9 +298,11 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRouteWithChildren
   ArticlesRoute: typeof ArticlesRouteWithChildren
+  AuthorRoute: typeof AuthorRoute
   BlogRoute: typeof BlogRouteWithChildren
   ContactRoute: typeof ContactRoute
   ScrapsRoute: typeof ScrapsRouteWithChildren
+  ApiContactRoute: typeof ApiContactRoute
   ApiBlogAssetsProxyRoute: typeof ApiBlogAssetsProxyRoute
   ApiBlogAssetsTempSplatRoute: typeof ApiBlogAssetsTempSplatRoute
 }
@@ -302,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/blog'
       preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/author': {
+      id: '/author'
+      path: '/author'
+      fullPath: '/author'
+      preLoaderRoute: typeof AuthorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/articles': {
@@ -380,6 +413,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/articles/$slug'
       preLoaderRoute: typeof ArticlesSlugRouteImport
       parentRoute: typeof ArticlesRoute
+    }
+    '/api/contact': {
+      id: '/api/contact'
+      path: '/api/contact'
+      fullPath: '/api/contact'
+      preLoaderRoute: typeof ApiContactRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/settings': {
       id: '/admin/settings'
@@ -507,9 +547,11 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AdminRoute: AdminRouteWithChildren,
   ArticlesRoute: ArticlesRouteWithChildren,
+  AuthorRoute: AuthorRoute,
   BlogRoute: BlogRouteWithChildren,
   ContactRoute: ContactRoute,
   ScrapsRoute: ScrapsRouteWithChildren,
+  ApiContactRoute: ApiContactRoute,
   ApiBlogAssetsProxyRoute: ApiBlogAssetsProxyRoute,
   ApiBlogAssetsTempSplatRoute: ApiBlogAssetsTempSplatRoute,
 }

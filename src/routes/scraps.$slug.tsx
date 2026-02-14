@@ -2,19 +2,17 @@ import { useState } from 'react'
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getScrap } from '~/features/scraps/api'
 import { MarkdownWithLinkCards } from '~/shared/components/MarkdownWithLinkCards'
+import { ArticleAuthorFooter } from '~/shared/components/ArticleAuthorFooter'
 import { parseScrapTitle } from '~/features/scraps/parseScrapTitle'
 import type { ScrapComment } from '~/features/scraps/types'
-import { getZennUsernameForServer } from '~/shared/lib/contentSource'
+import { useSiteAuthor } from '~/shared/hooks/useSiteAuthor'
 
 export const Route = createFileRoute('/scraps/$slug')({
   component: ScrapDetail,
   loader: async ({ params }) => {
-    const [scrap, zennUsername] = await Promise.all([
-      getScrap({ data: { slug: params.slug } }),
-      getZennUsernameForServer(),
-    ])
+    const scrap = await getScrap({ data: { slug: params.slug } })
     if (!scrap) throw notFound()
-    return { scrap, zennUsername }
+    return { scrap }
   },
 })
 
@@ -26,7 +24,8 @@ function countComments(comments: ScrapComment[]): number {
 }
 
 function ScrapDetail() {
-  const { scrap, zennUsername } = Route.useLoaderData()
+  const { scrap } = Route.useLoaderData()
+  const zennUsername = useSiteAuthor()
   const { displayTitle, tags } = parseScrapTitle(scrap.title)
   const zennScrapUrl = zennUsername
     ? `https://zenn.dev/${zennUsername}/scraps/${scrap.slug}`
@@ -93,6 +92,8 @@ function ScrapDetail() {
           ))}
         </div>
       </section>
+
+      <ArticleAuthorFooter authorName={zennUsername} />
     </article>
     </div>
   )

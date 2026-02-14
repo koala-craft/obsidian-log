@@ -2,6 +2,8 @@ import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getBlogPost } from '~/features/blog/api'
 import { getBlogImageSrc } from '~/shared/lib/blogImageUrl'
 import { MarkdownWithLinkCards } from '~/shared/components/MarkdownWithLinkCards'
+import { ArticleAuthorFooter } from '~/shared/components/ArticleAuthorFooter'
+import { useSiteAuthor } from '~/shared/hooks/useSiteAuthor'
 
 const PROSE_BASE =
   'prose prose-invert prose-zinc max-w-none tracking-tight prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-p:text-[1.05rem] prose-p:leading-[1.7] prose-li:text-[1.05rem] prose-li:my-0.5 prose-headings:font-semibold'
@@ -17,6 +19,7 @@ export const Route = createFileRoute('/blog/$slug')({
 
 function BlogDetail() {
   const { post } = Route.useLoaderData()
+  const authorName = useSiteAuthor()
 
   return (
     <div className="max-w-[96rem] mx-auto">
@@ -74,6 +77,7 @@ function BlogDetail() {
           proseClass={`${PROSE_BASE} prose-sm`}
           useNativeBr
         />
+        <ArticleAuthorFooter authorName={authorName} />
       </div>
       </div>
     </article>

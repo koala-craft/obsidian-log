@@ -1,6 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { sendContact } from './contactApi'
 
 const INPUT_STYLES =
   'w-full px-4 py-3 bg-zinc-800/80 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed'
@@ -23,17 +22,31 @@ export function ContactForm() {
     setResult(null)
     setSending(true)
 
-    const res = await sendContact({ data: { name, email, message } })
-    setSending(false)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message }),
+      })
+      const data = (await res.json()) as { success: boolean; error?: string }
 
-    if (res.success) {
-      setSubmitted(true)
-    } else {
+      if (data.success) {
+        setSubmitted(true)
+      } else {
+        setResult({
+          type: 'error',
+          text: data.error ?? '送信に失敗しました。しばらく経ってからお試しください。',
+        })
+        resultRef.current?.focus()
+      }
+    } catch {
       setResult({
         type: 'error',
-        text: res.error ?? '送信に失敗しました。しばらく経ってからお試しください。',
+        text: '送信に失敗しました。しばらく経ってからお試しください。',
       })
       resultRef.current?.focus()
+    } finally {
+      setSending(false)
     }
   }
 

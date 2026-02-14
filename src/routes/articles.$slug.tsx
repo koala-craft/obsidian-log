@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getArticle } from '~/features/articles/api'
 import { MarkdownWithLinkCards } from '~/shared/components/MarkdownWithLinkCards'
-import { getZennUsernameForServer } from '~/shared/lib/contentSource'
+import { ArticleAuthorFooter } from '~/shared/components/ArticleAuthorFooter'
+import { useSiteAuthor } from '~/shared/hooks/useSiteAuthor'
 
 const PROSE_BASE =
   'prose prose-invert prose-zinc max-w-none tracking-tight prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-p:text-[1.05rem] prose-p:leading-[1.7] prose-li:text-[1.05rem] prose-li:my-0.5 prose-headings:font-semibold'
@@ -9,17 +10,15 @@ const PROSE_BASE =
 export const Route = createFileRoute('/articles/$slug')({
   component: ArticleDetail,
   loader: async ({ params }) => {
-    const [article, zennUsername] = await Promise.all([
-      getArticle({ data: { slug: params.slug } }),
-      getZennUsernameForServer(),
-    ])
+    const article = await getArticle({ data: { slug: params.slug } })
     if (!article) throw notFound()
-    return { article, zennUsername }
+    return { article }
   },
 })
 
 function ArticleDetail() {
-  const { article, zennUsername } = Route.useLoaderData()
+  const { article } = Route.useLoaderData()
+  const zennUsername = useSiteAuthor()
   const zennArticleUrl =
     zennUsername && article
       ? `https://zenn.dev/${zennUsername}/articles/${article.slug}`
@@ -69,6 +68,7 @@ function ArticleDetail() {
           proseClass={`${PROSE_BASE} prose-sm`}
           useNativeBr
         />
+        <ArticleAuthorFooter authorName={zennUsername} />
       </div>
     </article>
     </div>
