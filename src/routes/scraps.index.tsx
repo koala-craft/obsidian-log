@@ -161,30 +161,29 @@ function ScrapsIndex() {
                   const { displayTitle, tags } = parseScrapTitle(s.title)
                   const preview = getScrapPreview(s)
                   return (
-                    <li key={s.slug}>
-                      <div className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 p-5">
-                        <Link
-                          to="/scraps/$slug"
-                          params={{ slug: s.slug }}
-                          className="block"
-                        >
-                          <h3 className="text-lg font-semibold text-cyan-400 hover:underline">
-                            {displayTitle || s.title}
-                          </h3>
-                          {preview && (
-                            <p className="mt-2 line-clamp-2 text-sm text-zinc-400">
-                              {preview}
-                            </p>
-                          )}
-                        </Link>
+                    <li key={s.slug} className="relative">
+                      <Link
+                        to="/scraps/$slug"
+                        params={{ slug: s.slug }}
+                        className="absolute inset-0 z-0 rounded-lg cursor-pointer"
+                        aria-label={`スクラップ「${displayTitle || s.title}」を読む`}
+                      />
+                      <div className="relative z-10 rounded-lg bg-zinc-800/50 p-5 pointer-events-none">
+                        <h3 className="text-lg font-semibold text-cyan-400">
+                          {displayTitle || s.title}
+                        </h3>
+                        {preview && (
+                          <p className="mt-2 line-clamp-2 text-sm text-zinc-400">
+                            {preview}
+                          </p>
+                        )}
                         {tags.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
+                          <div className="mt-3 flex flex-wrap gap-1.5 pointer-events-auto">
                             {tags.map((t) => (
                               <Link
                                 key={t}
                                 to="/scraps"
                                 search={{ tag: t }}
-                                onClick={(e) => e.stopPropagation()}
                                 className="text-xs px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-400 hover:bg-zinc-600/60 hover:text-zinc-300"
                               >
                                 {t}

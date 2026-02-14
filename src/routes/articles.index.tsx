@@ -159,30 +159,29 @@ function ArticlesIndex() {
                 {grouped.get(key)!.map((a) => {
                   const preview = getArticlePreview(a)
                   return (
-                    <li key={a.slug}>
-                      <div className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 p-5 transition hover:border-cyan-500/40 hover:bg-zinc-800/60">
-                        <Link
-                          to="/articles/$slug"
-                          params={{ slug: a.slug }}
-                          className="block"
-                        >
-                          <h3 className="text-lg font-semibold text-cyan-400 hover:underline">
-                            {a.title}
-                          </h3>
-                          {preview && (
-                            <p className="mt-2 line-clamp-2 text-sm text-zinc-400">
-                              {preview}
-                            </p>
-                          )}
-                        </Link>
+                    <li key={a.slug} className="relative">
+                      <Link
+                        to="/articles/$slug"
+                        params={{ slug: a.slug }}
+                        className="absolute inset-0 z-0 rounded-lg cursor-pointer"
+                        aria-label={`記事「${a.title}」を読む`}
+                      />
+                      <div className="relative z-10 rounded-lg bg-zinc-800/50 p-5 pointer-events-none">
+                        <h3 className="text-lg font-semibold text-cyan-400">
+                          {a.title}
+                        </h3>
+                        {preview && (
+                          <p className="mt-2 line-clamp-2 text-sm text-zinc-400">
+                            {preview}
+                          </p>
+                        )}
                         {a.tags.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
+                          <div className="mt-3 flex flex-wrap gap-1.5 pointer-events-auto">
                             {a.tags.map((t) => (
                               <Link
                                 key={t}
                                 to="/articles"
                                 search={{ tag: t }}
-                                onClick={(e) => e.stopPropagation()}
                                 className="text-xs px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-400 hover:bg-zinc-600/60 hover:text-zinc-300"
                               >
                                 {t}

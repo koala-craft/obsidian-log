@@ -3,6 +3,7 @@ import { getArticles } from '~/features/articles/api'
 import { getScraps } from '~/features/scraps/api'
 import { parseScrapTitle } from '~/features/scraps/parseScrapTitle'
 import { fetchTaskSummary } from '~/features/tasks/api'
+import { TopCard } from '~/shared/components/TopCard'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -36,34 +37,26 @@ function HomePage() {
           </div>
           <ul className="space-y-3">
             {articles.slice(0, 5).map((a) => (
-              <li key={a.slug}>
-                <div className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-4 py-3 transition hover:border-cyan-500/40 hover:bg-zinc-800/60">
+              <TopCard
+                key={a.slug}
+                to="/articles/$slug"
+                params={{ slug: a.slug }}
+                ariaLabel={`記事「${a.title}」を読む`}
+                title={a.title}
+              >
+                {a.tags.map((t) => (
                   <Link
-                    to="/articles/$slug"
-                    params={{ slug: a.slug }}
-                    className="block"
+                    key={t}
+                    to="/articles"
+                    search={{ tag: t }}
+                    className="pointer-events-auto px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-400 hover:bg-zinc-600/60 hover:text-zinc-300"
                   >
-                    <h3 className="text-base font-semibold text-cyan-400 hover:underline">
-                      {a.title}
-                    </h3>
+                    {t}
                   </Link>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                    {a.tags.map((t) => (
-                      <Link
-                        key={t}
-                        to="/articles"
-                        search={{ tag: t }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-400 hover:bg-zinc-600/60 hover:text-zinc-300"
-                      >
-                        {t}
-                      </Link>
-                    ))}
-                    {a.tags.length > 0 && <span className="text-zinc-600">·</span>}
-                    <span>{a.createdAt}</span>
-                  </div>
-                </div>
-              </li>
+                ))}
+                {a.tags.length > 0 && <span className="text-zinc-600">·</span>}
+                <span>{a.createdAt}</span>
+              </TopCard>
             ))}
             {articles.length === 0 && (
               <li className="text-zinc-500 py-4">記事がありません</li>
@@ -82,42 +75,34 @@ function HomePage() {
             {scraps.slice(0, 5).map((s) => {
               const { displayTitle, tags } = parseScrapTitle(s.title)
               return (
-                <li key={s.slug}>
-                  <div className="rounded-lg border border-zinc-700/80 bg-zinc-900/50 px-4 py-3 transition hover:border-cyan-500/40 hover:bg-zinc-800/60">
+                <TopCard
+                  key={s.slug}
+                  to="/scraps/$slug"
+                  params={{ slug: s.slug }}
+                  ariaLabel={`スクラップ「${displayTitle || s.title}」を読む`}
+                  title={displayTitle || s.title}
+                >
+                  {tags.map((t) => (
                     <Link
-                      to="/scraps/$slug"
-                      params={{ slug: s.slug }}
-                      className="block"
+                      key={t}
+                      to="/scraps"
+                      search={{ tag: t }}
+                      className="pointer-events-auto px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-400 hover:bg-zinc-600/60 hover:text-zinc-300"
                     >
-                      <h3 className="text-base font-semibold text-cyan-400 hover:underline">
-                        {displayTitle || s.title}
-                      </h3>
+                      {t}
                     </Link>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                      {tags.map((t) => (
-                        <Link
-                          key={t}
-                          to="/scraps"
-                          search={{ tag: t }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-400 hover:bg-zinc-600/60 hover:text-zinc-300"
-                        >
-                          {t}
-                        </Link>
-                      ))}
-                      {tags.length > 0 && <span className="text-zinc-600">·</span>}
-                      <span>{s.created_at}</span>
+                  ))}
+                  {tags.length > 0 && <span className="text-zinc-600">·</span>}
+                  <span>{s.created_at}</span>
+                  <span className="text-zinc-600">·</span>
+                  <span>コメント {s.comments.length}件</span>
+                  {s.comments[0]?.author && (
+                    <>
                       <span className="text-zinc-600">·</span>
-                      <span>コメント {s.comments.length}件</span>
-                      {s.comments[0]?.author && (
-                        <>
-                          <span className="text-zinc-600">·</span>
-                          <span>by {s.comments[0].author}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </li>
+                      <span>by {s.comments[0].author}</span>
+                    </>
+                  )}
+                </TopCard>
               )
             })}
             {scraps.length === 0 && (

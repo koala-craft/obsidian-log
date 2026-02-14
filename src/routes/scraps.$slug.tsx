@@ -127,8 +127,8 @@ function CommentBlock({
     <div
       className={
         isParent
-          ? 'rounded-lg border border-zinc-700/80 bg-zinc-900/50 p-5'
-          : 'ml-4 pl-5 border-l-2 border-zinc-600/80 py-4'
+          ? 'rounded-lg bg-zinc-800/50 p-5'
+          : 'ml-4 pl-5 py-4 bg-zinc-900/40'
       }
     >
       <div className="flex items-center gap-3 text-sm text-zinc-500 mb-3">
