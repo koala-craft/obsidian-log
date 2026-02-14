@@ -6,11 +6,11 @@ export const Route = createFileRoute('/about')({
 
 function AboutPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">About</h1>
+    <div className="max-w-[96rem] mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">About this site.</h1>
       <div className="prose prose-invert prose-zinc max-w-none space-y-6">
         <p className="text-lg text-zinc-300 leading-relaxed">
-          Obsidian Log は、学習の記録と技術ナレッジを残すためのサイトです。
+          Obsidian Log は、学習の記録と技術ナレッジを残すためのサイトです。<br />
           日々の気づきや試したこと、調べたことをメモとして蓄積し、
           後から振り返れるようにしています。
         </p>

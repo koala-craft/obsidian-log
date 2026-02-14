@@ -87,7 +87,7 @@ function ScrapsIndex() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-[96rem] mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">スクラップ一覧</h1>
 
       <div className="mb-6">
@@ -161,15 +161,15 @@ function ScrapsIndex() {
                   const { displayTitle, tags } = parseScrapTitle(s.title)
                   const preview = getScrapPreview(s)
                   return (
-                    <li key={s.slug} className="relative">
+                    <li key={s.slug} className="relative group">
                       <Link
                         to="/scraps/$slug"
                         params={{ slug: s.slug }}
-                        className="absolute inset-0 z-0 rounded-lg cursor-pointer"
+                        className="absolute inset-0 z-0 rounded-md cursor-pointer"
                         aria-label={`スクラップ「${displayTitle || s.title}」を読む`}
                       />
-                      <div className="relative z-10 rounded-lg bg-zinc-800/50 p-5 pointer-events-none">
-                        <h3 className="text-lg font-semibold text-cyan-400">
+                      <div className="relative z-10 rounded-md border border-zinc-800/80 bg-zinc-900/40 p-5 pointer-events-none transition-colors group-hover:border-zinc-700/60 group-hover:bg-zinc-800/50">
+                        <h3 className="text-lg font-semibold text-zinc-100 group-hover:text-cyan-400 transition-colors">
                           {displayTitle || s.title}
                         </h3>
                         {preview && (

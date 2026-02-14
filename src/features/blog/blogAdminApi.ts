@@ -14,6 +14,7 @@ import {
   deleteFileOnGitHub,
 } from '~/shared/lib/github'
 import { validateSlug } from '~/shared/lib/slug'
+import { saveTempImage, clearTempAssets, readTempImage } from '~/shared/lib/blogTempAssets'
 import type { BlogPost } from './types'
 
 const BLOG_DIR = 'blog'
@@ -31,6 +32,7 @@ function buildFrontmatter(post: {
   updatedAt: string
   tags: string[]
   visibility: 'public' | 'private'
+  firstView?: string
 }): string {
   const lines = [
     '---',
@@ -39,6 +41,7 @@ function buildFrontmatter(post: {
     `updatedAt: ${post.updatedAt}`,
     `tags: [${post.tags.map((t) => `"${t.replace(/"/g, '\\"')}"`).join(', ')}]`,
     `visibility: ${post.visibility}`,
+    ...(post.firstView ? [`firstView: ${post.firstView}`] : []),
     '---',
     '',
   ]
@@ -58,6 +61,7 @@ export type CreateBlogPostInput = {
   content: string
   tags?: string[]
   visibility?: 'public' | 'private'
+  firstView?: string
 }
 
 export const createBlogPost = createServerFn({ method: 'POST' })
@@ -102,6 +106,7 @@ export const createBlogPost = createServerFn({ method: 'POST' })
       updatedAt: now,
       tags: Array.isArray(data.tags) ? data.tags : [],
       visibility: data.visibility === 'private' ? 'private' : 'public',
+      firstView: data.firstView?.trim() || undefined,
     }
 
     const content = buildMarkdownContent(post)
@@ -126,6 +131,7 @@ export type UpdateBlogPostInput = {
   content: string
   tags?: string[]
   visibility?: 'public' | 'private'
+  firstView?: string
 }
 
 export const updateBlogPost = createServerFn({ method: 'POST' })
@@ -177,6 +183,7 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
       updatedAt: now,
       tags: Array.isArray(data.tags) ? data.tags : [],
       visibility: data.visibility === 'private' ? 'private' : 'public',
+      firstView: data.firstView?.trim() || undefined,
     }
 
     const content = buildMarkdownContent(post)
@@ -191,6 +198,244 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
       sha
     )
   })
+
+export type SaveBlogImageToTempInput = {
+  filename: string
+  contentBase64: string
+}
+
+/** 画像を仮保存し、プレビュー用 URL を返す（貼り付け直後に即時表示） */
+export const saveBlogImageToTemp = createServerFn({ method: 'POST' })
+  .inputValidator((data: SaveBlogImageToTempInput) => data)
+  .handler(async ({ data }): Promise<{ success: true; tempUrl: string } | { success: false; error: string }> => {
+    const ext = data.filename.split('.').pop()?.toLowerCase() ?? 'png'
+    if (!/^(png|jpg|jpeg|gif|webp)$/.test(ext)) {
+      return { success: false, error: '対応していない画像形式です' }
+    }
+    const key = `img-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const tempUrl = saveTempImage(key, data.contentBase64, ext)
+    return { success: true, tempUrl }
+  })
+
+/** 保存時に仮ディレクトリをクリア（管理者のみ） */
+export const clearBlogTempAssets = createServerFn({ method: 'POST' })
+  .inputValidator((data: { accessToken: string }) => data)
+  .handler(async ({ data }): Promise<{ success: boolean }> => {
+    const supabase = getSupabase()
+    if (!supabase) return { success: false }
+
+    const { data: { user }, error } = await supabase.auth.getUser(data.accessToken)
+    if (error || !user) return { success: false }
+
+    const username = getGitHubUsername(user)
+    if (!username) return { success: false }
+
+    const { isAdminByUsername } = await import('~/shared/lib/config')
+    const isAdmin = await isAdminByUsername(username)
+    if (!isAdmin) return { success: false }
+
+    clearTempAssets()
+    return { success: true }
+  })
+
+export type PrepareBlogContentForSaveInput = {
+  accessToken: string
+  providerToken?: string
+  slug: string
+  content: string
+  /** ファーストビュー画像 URL。temp URL の場合は GitHub にアップロードして差し替え */
+  firstView?: string
+}
+
+/** 保存時: 本文内・firstView の temp URL を GitHub にアップロードして差し替え */
+export const prepareBlogContentForSave = createServerFn({ method: 'POST' })
+  .inputValidator((data: PrepareBlogContentForSaveInput) => data)
+  .handler(
+    async ({
+      data,
+    }): Promise<
+      | { success: true; content: string; firstView?: string }
+      | { success: false; error: string }
+    > => {
+      const supabase = getSupabase()
+      if (!supabase) return { success: false, error: 'Supabase が設定されていません' }
+
+      const { data: { user }, error } = await supabase.auth.getUser(data.accessToken)
+      if (error || !user) return { success: false, error: '認証が必要です' }
+
+      const username = getGitHubUsername(user)
+      if (!username) return { success: false, error: 'GitHub ユーザー名を取得できません' }
+
+      const { isAdminByUsername } = await import('~/shared/lib/config')
+      const isAdmin = await isAdminByUsername(username)
+      if (!isAdmin) return { success: false, error: '管理者権限がありません' }
+
+      const githubUrl = await getGithubRepoUrlForServer()
+      if (!githubUrl || !isValidGithubRepoUrl(githubUrl)) {
+        return { success: false, error: 'GitHub リポジトリ URL を設定してください' }
+      }
+
+      const parsed = parseRepoUrl(githubUrl)
+      if (!parsed) return { success: false, error: 'リポジトリ URL を解析できません' }
+
+      const token = data.providerToken ?? process.env.GITHUB_TOKEN
+      if (!token) {
+        return {
+          success: false,
+          error: 'GitHub トークンが必要です。ログインし直すか、GITHUB_TOKEN を設定してください',
+        }
+      }
+
+      if (!validateSlug(data.slug)) {
+        return { success: false, error: 'スラッグが不正です' }
+      }
+
+      const tempUrlRegex = /!\[([^\]]*)\]\((\/api\/blog-assets\/temp\/[^)]+)\)/g
+      let updatedContent = data.content
+      let match: RegExpExecArray | null
+
+      while ((match = tempUrlRegex.exec(data.content)) !== null) {
+        const alt = match[1]
+        const tempUrl = match[2]
+        const tempFilename = tempUrl.replace('/api/blog-assets/temp/', '')
+        const buffer = readTempImage(tempFilename)
+        if (!buffer) continue
+
+        const base64 = buffer.toString('base64')
+        const filename = alt?.trim() && /^[^/\\]+\.(png|jpg|jpeg|gif|webp)$/i.test(alt)
+          ? alt
+          : `image-${Date.now()}.${tempFilename.split('.').pop() ?? 'png'}`
+
+        const path = `blog/assets/${data.slug}/${filename}`
+        const sha = await getFileSha(parsed.owner, parsed.repo, path, token)
+        const result = await updateFileOnGitHub(
+          parsed.owner,
+          parsed.repo,
+          path,
+          base64,
+          `blog: add image ${filename}`,
+          token,
+          sha ?? undefined,
+          true
+        )
+        if (!result.success) {
+          return { success: false, error: result.error ?? `画像 ${filename} のアップロードに失敗しました` }
+        }
+        const encodedPath = `blog/assets/${encodeURIComponent(data.slug)}/${encodeURIComponent(filename)}`
+        const rawUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/main/${encodedPath}`
+        updatedContent = updatedContent.split(tempUrl).join(rawUrl)
+      }
+
+      let resolvedFirstView = data.firstView?.trim() || undefined
+      if (resolvedFirstView?.startsWith('/api/blog-assets/temp/')) {
+        const tempFilename = resolvedFirstView.replace('/api/blog-assets/temp/', '')
+        const buffer = readTempImage(tempFilename)
+        if (buffer) {
+          const base64 = buffer.toString('base64')
+          const ext = tempFilename.split('.').pop() ?? 'png'
+          const filename = `firstview-${Date.now()}.${ext}`
+          const path = `blog/assets/${data.slug}/${filename}`
+          const sha = await getFileSha(parsed.owner, parsed.repo, path, token)
+          const result = await updateFileOnGitHub(
+            parsed.owner,
+            parsed.repo,
+            path,
+            base64,
+            `blog: add firstview ${filename}`,
+            token,
+            sha ?? undefined,
+            true
+          )
+          if (result.success) {
+            const encodedPath = `blog/assets/${encodeURIComponent(data.slug)}/${encodeURIComponent(filename)}`
+            resolvedFirstView = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/main/${encodedPath}`
+          } else {
+            return { success: false, error: result.error ?? 'ファーストビュー画像のアップロードに失敗しました' }
+          }
+        }
+      }
+
+      return { success: true, content: updatedContent, firstView: resolvedFirstView }
+    }
+  )
+
+export type UploadBlogImageInput = {
+  accessToken: string
+  providerToken?: string
+  slug: string
+  filename: string
+  contentBase64: string
+}
+
+/** 拡張子は png/jpg/jpeg/gif/webp、パス区切り文字は禁止（日本語ファイル名対応） */
+const IMAGE_EXT_REGEX = /^[^/\\]+\.(png|jpg|jpeg|gif|webp)$/
+
+export const uploadBlogImage = createServerFn({ method: 'POST' })
+  .inputValidator((data: UploadBlogImageInput) => data)
+  .handler(
+    async ({
+      data,
+    }): Promise<{ success: true; url: string } | { success: false; error: string }> => {
+      const supabase = getSupabase()
+      if (!supabase) return { success: false, error: 'Supabase が設定されていません' }
+
+      const { data: { user }, error } = await supabase.auth.getUser(data.accessToken)
+      if (error || !user) return { success: false, error: '認証が必要です' }
+
+      const username = getGitHubUsername(user)
+      if (!username) return { success: false, error: 'GitHub ユーザー名を取得できません' }
+
+      const { isAdminByUsername } = await import('~/shared/lib/config')
+      const isAdmin = await isAdminByUsername(username)
+      if (!isAdmin) return { success: false, error: '管理者権限がありません' }
+
+      if (!validateSlug(data.slug)) {
+        return { success: false, error: 'スラッグが不正です' }
+      }
+      if (!IMAGE_EXT_REGEX.test(data.filename)) {
+        return {
+          success: false,
+          error: 'ファイル名に / または \\ は使用できません。拡張子は png, jpg, jpeg, gif, webp のみです',
+        }
+      }
+
+      const githubUrl = await getGithubRepoUrlForServer()
+      if (!githubUrl || !isValidGithubRepoUrl(githubUrl)) {
+        return { success: false, error: 'GitHub リポジトリ URL を設定してください' }
+      }
+
+      const parsed = parseRepoUrl(githubUrl)
+      if (!parsed) return { success: false, error: 'リポジトリ URL を解析できません' }
+
+      const token = data.providerToken ?? process.env.GITHUB_TOKEN
+      if (!token) {
+        return {
+          success: false,
+          error: 'GitHub トークンが必要です。ログインし直すか、GITHUB_TOKEN を設定してください',
+        }
+      }
+
+      const path = `blog/assets/${data.slug}/${data.filename}`
+      const sha = await getFileSha(parsed.owner, parsed.repo, path, token)
+
+      const result = await updateFileOnGitHub(
+        parsed.owner,
+        parsed.repo,
+        path,
+        data.contentBase64,
+        `blog: add image ${data.filename}`,
+        token,
+        sha ?? undefined,
+        true
+      )
+
+      if (!result.success) return { success: false, error: result.error ?? 'アップロードに失敗しました' }
+
+      const encodedPath = `blog/assets/${encodeURIComponent(data.slug)}/${encodeURIComponent(data.filename)}`
+      const rawUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/main/${encodedPath}`
+      return { success: true, url: rawUrl }
+    }
+  )
 
 export type DeleteBlogPostInput = {
   accessToken: string

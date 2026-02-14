@@ -1,6 +1,10 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, useCallback } from 'react'
-import { createBlogPost } from '~/features/blog/blogAdminApi'
+import {
+  createBlogPost,
+  prepareBlogContentForSave,
+  clearBlogTempAssets,
+} from '~/features/blog/blogAdminApi'
 import { getSession } from '~/features/admin/auth'
 import { BlogEditor, type BlogEditorMeta } from '~/features/blog/BlogEditor'
 import { validateSlug } from '~/shared/lib/slug'
@@ -16,6 +20,7 @@ function AdminBlogNew() {
     title: '',
     tags: '',
     visibility: 'public',
+    firstView: '',
   })
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
@@ -38,23 +43,40 @@ function AdminBlogNew() {
     }
 
     setSaving(true)
+    const prepared = await prepareBlogContentForSave({
+      data: {
+        accessToken: session.session.access_token,
+        providerToken: session.session.provider_token ?? undefined,
+        slug: meta.slug.trim(),
+        content,
+        firstView: meta.firstView,
+      },
+    })
+    if (!prepared.success) {
+      setSaving(false)
+      setMessage({ type: 'error', text: prepared.error ?? '画像のアップロードに失敗しました' })
+      return
+    }
+
     const result = await createBlogPost({
       data: {
         accessToken: session.session.access_token,
         providerToken: session.session.provider_token ?? undefined,
         slug: meta.slug.trim(),
         title: meta.title.trim() || meta.slug.trim(),
-        content,
+        content: prepared.content,
         tags: meta.tags
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean),
         visibility: meta.visibility,
+        firstView: prepared.firstView,
       },
     })
     setSaving(false)
 
     if (result.success) {
+      await clearBlogTempAssets({ data: { accessToken: session.session.access_token } })
       navigate({ to: '/admin/blog/$slug', params: { slug: meta.slug.trim() } })
     } else {
       setMessage({ type: 'error', text: result.error ?? '保存に失敗しました' })
@@ -81,6 +103,7 @@ function AdminBlogNew() {
         onSave={handleSave}
         saving={saving}
         message={message}
+        slug={meta.slug ?? ''}
         slugEditable
       />
     </div>

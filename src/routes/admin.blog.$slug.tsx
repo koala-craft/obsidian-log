@@ -1,7 +1,12 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
 import { getBlogPost } from '~/features/blog/api'
-import { updateBlogPost, deleteBlogPost } from '~/features/blog/blogAdminApi'
+import {
+  updateBlogPost,
+  deleteBlogPost,
+  prepareBlogContentForSave,
+  clearBlogTempAssets,
+} from '~/features/blog/blogAdminApi'
 import { getSession } from '~/features/admin/auth'
 import { BlogEditor, type BlogEditorMeta } from '~/features/blog/BlogEditor'
 
@@ -20,6 +25,7 @@ function AdminBlogEdit() {
     title: initialPost.title,
     tags: initialPost.tags.join(', '),
     visibility: initialPost.visibility,
+    firstView: initialPost.firstView,
   })
   const [content, setContent] = useState(initialPost.content)
   const [saving, setSaving] = useState(false)
@@ -32,6 +38,7 @@ function AdminBlogEdit() {
       title: initialPost.title,
       tags: initialPost.tags.join(', '),
       visibility: initialPost.visibility,
+      firstView: initialPost.firstView,
     })
     setContent(initialPost.content)
   }, [initialPost])
@@ -45,24 +52,43 @@ function AdminBlogEdit() {
     }
 
     setSaving(true)
+    const prepared = await prepareBlogContentForSave({
+      data: {
+        accessToken: session.session.access_token,
+        providerToken: session.session.provider_token ?? undefined,
+        slug: initialPost.slug,
+        content,
+        firstView: meta.firstView,
+      },
+    })
+    if (!prepared.success) {
+      setSaving(false)
+      setMessage({ type: 'error', text: prepared.error ?? '画像のアップロードに失敗しました' })
+      return
+    }
+
     const result = await updateBlogPost({
       data: {
         accessToken: session.session.access_token,
         providerToken: session.session.provider_token ?? undefined,
         slug: initialPost.slug,
         title: meta.title.trim() || initialPost.slug,
-        content,
+        content: prepared.content,
         tags: meta.tags
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean),
         visibility: meta.visibility,
+        firstView: prepared.firstView,
       },
     })
     setSaving(false)
 
     if (result.success) {
       setMessage({ type: 'success', text: '保存しました' })
+      setContent(prepared.content)
+      setMeta((m) => ({ ...m, firstView: prepared.firstView }))
+      await clearBlogTempAssets({ data: { accessToken: session.session.access_token } })
     } else {
       setMessage({ type: 'error', text: result.error ?? '保存に失敗しました' })
     }
@@ -98,15 +124,6 @@ function AdminBlogEdit() {
         </h1>
         <div className="flex items-center gap-3 shrink-0">
           <Link
-            to="/blog/$slug"
-            params={{ slug: initialPost.slug }}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-zinc-500 hover:text-zinc-300"
-          >
-            プレビュー
-          </Link>
-          <Link
             to="/admin/blog"
             className="text-sm text-zinc-500 hover:text-zinc-300"
           >
@@ -123,6 +140,7 @@ function AdminBlogEdit() {
         onSave={handleSave}
         saving={saving}
         message={message}
+        slug={initialPost.slug}
         slugEditable={false}
         extraActions={
           <button

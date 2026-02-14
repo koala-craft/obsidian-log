@@ -51,6 +51,8 @@ function parseBlogPost(content: string, slug: string): BlogPost | null {
     visibility = visibilityVal.toLowerCase() === 'private' ? 'private' : 'public'
   }
 
+  const firstView = frontmatter.match(/firstView:\s*(.+)/)?.[1]?.trim()
+
   return {
     slug,
     title,
@@ -59,6 +61,7 @@ function parseBlogPost(content: string, slug: string): BlogPost | null {
     updatedAt,
     tags,
     visibility,
+    firstView: firstView || undefined,
   }
 }
 

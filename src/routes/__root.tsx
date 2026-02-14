@@ -7,6 +7,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import * as React from 'react'
 import { AuthProvider } from '~/features/admin/AuthProvider'
+import { HomePageBackground } from '~/shared/components/HomePageBackground'
 import { DefaultCatchBoundary } from '~/shared/components/DefaultCatchBoundary'
 import { HeaderNav } from '~/shared/components/HeaderNav'
 import { NotFound } from '~/shared/components/NotFound'
@@ -42,12 +43,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="bg-zinc-950 text-zinc-100 min-h-screen">
+      <body className="relative text-zinc-100 min-h-screen bg-zinc-950">
+        <HomePageBackground />
         <AuthProvider>
-          <header className="border-b border-zinc-800">
+          <header className="relative z-10 border-b border-zinc-800">
             <HeaderNav />
           </header>
-          <main>{children}</main>
+          <main className="relative z-10">{children}</main>
         </AuthProvider>
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />

@@ -5,7 +5,7 @@ import { NotFound } from './shared/components/NotFound'
 
 function PendingComponent() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-16 flex flex-col items-center gap-4">
+    <div className="max-w-[96rem] mx-auto px-4 py-16 flex flex-col items-center gap-4">
       <p className="text-zinc-500">読み込み中...</p>
       <Link
         to="/"

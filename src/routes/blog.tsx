@@ -11,7 +11,7 @@ function BlogLayout() {
   return (
     <div className="min-h-[calc(100vh-4rem)] pt-8">
       <nav
-        className="max-w-4xl mx-auto px-4 flex items-center gap-2 text-sm text-zinc-400 mb-6"
+        className="max-w-[96rem] mx-auto px-4 flex items-center gap-2 text-sm text-zinc-400 mb-6"
         aria-label="パンくず"
       >
         <Link to="/" className="hover:text-cyan-400 transition">

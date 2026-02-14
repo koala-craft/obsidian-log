@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { getBlogPost } from '~/features/blog/api'
+import { getBlogImageSrc } from '~/shared/lib/blogImageUrl'
 import { MarkdownWithLinkCards } from '~/shared/components/MarkdownWithLinkCards'
 
 const PROSE_BASE =
@@ -18,11 +19,33 @@ function BlogDetail() {
   const { post } = Route.useLoaderData()
 
   return (
-    <article className="mx-auto px-4 py-8 pb-60 sm:px-6">
-      <header className="mx-auto max-w-[100ch]">
-        <h1 className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight mb-4">
-          {post.title}
-        </h1>
+    <div className="max-w-[96rem] mx-auto">
+    <article className="pb-60 sm:px-6">
+      {/* ファーストビュー: firstView あり → 画像、なし → タイトル＋グラデーション */}
+      {post.firstView ? (
+        <div className="relative w-full aspect-[21/9] min-h-[200px] overflow-hidden">
+          <img
+            src={getBlogImageSrc(post.firstView)}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 px-4 py-6 sm:px-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 leading-tight tracking-tight drop-shadow-lg">
+              {post.title}
+            </h1>
+          </div>
+        </div>
+      ) : (
+        <div className="relative w-full min-h-[200px] flex items-center justify-center px-4 py-16 bg-gradient-to-br from-cyan-900/40 via-zinc-900/60 to-violet-900/40">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 leading-tight tracking-tight text-center">
+            {post.title}
+          </h1>
+        </div>
+      )}
+
+      <div className="mx-auto px-4 py-8 max-w-[100ch]">
+        <header>
         {post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {post.tags.map((t) => (
@@ -52,6 +75,8 @@ function BlogDetail() {
           useNativeBr
         />
       </div>
+      </div>
     </article>
+    </div>
   )
 }

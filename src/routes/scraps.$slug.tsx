@@ -34,6 +34,7 @@ function ScrapDetail() {
   const totalComments = countComments(scrap.comments)
 
   return (
+    <div className="max-w-[96rem] mx-auto">
     <article className="max-w-[100ch] mx-auto px-4 pb-60">
       {/* ヘッダー: タイトル・メタ・タグを一覧で把握 */}
       <header className="mb-10">
@@ -93,6 +94,7 @@ function ScrapDetail() {
         </div>
       </section>
     </article>
+    </div>
   )
 }
 

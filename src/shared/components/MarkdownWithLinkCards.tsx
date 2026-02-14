@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { extractLinks, isContentOnlyLinks } from '~/shared/lib/contentLinks'
+import { getBlogImageSrc } from '~/shared/lib/blogImageUrl'
 import { LinkCard } from './LinkCard'
 
 interface MarkdownWithLinkCardsProps {
@@ -15,6 +16,14 @@ interface MarkdownWithLinkCardsProps {
 
 const DEFAULT_PROSE =
   'prose prose-invert prose-zinc max-w-none prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-p:leading-[1.7] prose-li:my-0.5'
+
+/** 画像 URL にスペースや日本語が含まれる場合、Markdown が途中で切れるのを防ぐため <url> で囲む */
+function fixImageUrls(content: string): string {
+  return content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
+    const needsWrap = /[\s<>]/.test(url) || /[\u3000-\u9FFF\uFF00-\uFFFF]/.test(url)
+    return needsWrap ? `![${alt}](<${url}>)` : `![${alt}](${url})`
+  })
+}
 
 function ProseLineBreak() {
   return <span className="prose-line-break" aria-hidden="true" />
@@ -39,7 +48,8 @@ export function MarkdownWithLinkCards({
 }: MarkdownWithLinkCardsProps) {
   if (!content.trim()) return null
 
-  const lines = content.split('\n')
+  const fixedContent = fixImageUrls(content)
+  const lines = fixedContent.split('\n')
   const hasLinkOnlyLine = lines.some((line) => isContentOnlyLinks(line))
 
   const proseStyle = {
@@ -47,7 +57,17 @@ export function MarkdownWithLinkCards({
   } as React.CSSProperties
 
   // remarkBreaks: 単一改行→br（p 内）、空行→段落区切り（別 p）。useNativeBr 時は br をそのまま、否則は prose-line-break に置換
-  const markdownComponents = useNativeBr ? {} : { br: () => <ProseLineBreak /> }
+  const markdownComponents = {
+    ...(useNativeBr ? {} : { br: () => <ProseLineBreak /> }),
+    img: ({ src, alt, ...props }: React.ComponentPropsWithoutRef<'img'>) =>
+      src ? (
+        <img
+          src={getBlogImageSrc(src)}
+          alt={alt ?? ''}
+          {...props}
+        />
+      ) : null,
+  }
 
   if (!hasLinkOnlyLine) {
     return (
@@ -56,7 +76,7 @@ export function MarkdownWithLinkCards({
           remarkPlugins={[remarkGfm, remarkBreaks]}
           components={markdownComponents}
         >
-          {content}
+          {fixedContent}
         </ReactMarkdown>
       </div>
     )
@@ -90,7 +110,7 @@ export function MarkdownWithLinkCards({
               remarkPlugins={[remarkGfm, remarkBreaks]}
               components={markdownComponents}
             >
-              {line}
+              {fixImageUrls(line)}
             </ReactMarkdown>
           </div>
         )

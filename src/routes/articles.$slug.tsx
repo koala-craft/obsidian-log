@@ -26,7 +26,8 @@ function ArticleDetail() {
       : null
 
   return (
-    <article className="mx-auto px-4 py-8 pb-60 sm:px-6">
+    <div className="max-w-[96rem] mx-auto">
+    <article className="px-4 py-8 pb-60 sm:px-6">
       {/* ヘッダー: 最適幅で中央配置 */}
       <header className="mx-auto max-w-[100ch]">
         <h1 className="text-2xl font-bold text-zinc-100 leading-tight tracking-tight mb-4">
@@ -70,5 +71,6 @@ function ArticleDetail() {
         />
       </div>
     </article>
+    </div>
   )
 }

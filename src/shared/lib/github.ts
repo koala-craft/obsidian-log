@@ -135,7 +135,9 @@ export async function updateFileOnGitHub(
   content: string,
   message: string,
   token: string,
-  sha?: string | null
+  sha?: string | null,
+  /** true: content が既に base64（画像等）。false: UTF-8 として base64 エンコード */
+  contentAlreadyBase64 = false
 ): Promise<{ success: boolean; error?: string }> {
   const headers: Record<string, string> = {
     ...GITHUB_HEADERS,
@@ -144,7 +146,7 @@ export async function updateFileOnGitHub(
   }
   const body: Record<string, unknown> = {
     message,
-    content: Buffer.from(content, 'utf-8').toString('base64'),
+    content: contentAlreadyBase64 ? content : Buffer.from(content, 'utf-8').toString('base64'),
   }
   if (sha) body.sha = sha
 
@@ -198,4 +200,17 @@ export async function fetchRawFile(downloadUrl: string): Promise<string | null> 
   const res = await fetchWithTimeout(downloadUrl, { headers })
   if (!res.ok) return null
   return res.text()
+}
+
+/** raw.githubusercontent.com の画像をバイナリで取得（プロキシ用） */
+export async function fetchRawFileBinary(downloadUrl: string): Promise<ArrayBuffer | null> {
+  if (!downloadUrl.startsWith('https://raw.githubusercontent.com/')) return null
+
+  const token = typeof process !== 'undefined' ? process.env.GITHUB_TOKEN : undefined
+  const headers: Record<string, string> = { ...GITHUB_HEADERS }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetchWithTimeout(downloadUrl, { headers })
+  if (!res.ok) return null
+  return res.arrayBuffer()
 }

@@ -14,7 +14,7 @@ export const Route = createFileRoute('/admin')({
 /** ルート読み込み中も「管理画面にログイン」を即表示。読み込み中...を出さない */
 function AdminLoginPending() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-[96rem] mx-auto px-4 py-8">
       <nav className="mb-8">
         <Link to="/" className="text-zinc-500 hover:underline">
           ← サイトに戻る
@@ -31,7 +31,7 @@ function AdminLayout() {
 
   if (!user) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-[96rem] mx-auto px-4 py-8">
         <nav className="mb-8">
           <Link to="/" className="text-zinc-500 hover:underline">
             ← サイトに戻る
@@ -44,7 +44,7 @@ function AdminLayout() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-[96rem] mx-auto px-4 py-8">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
           <div className="h-8 w-8 rounded-full border-2 border-zinc-600 border-t-cyan-500 animate-spin" />
           <p className="text-zinc-500 text-sm">認証を確認しています。少々お待ちください。</p>
@@ -55,7 +55,7 @@ function AdminLayout() {
 
   if (!isAdmin) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-[96rem] mx-auto px-4 py-8">
         <nav className="mb-8">
           <Link to="/" className="text-zinc-500 hover:underline">
             ← サイトに戻る
@@ -78,8 +78,8 @@ function AdminLayout() {
     <div
       className={
         isBlogEditor
-          ? 'w-full max-w-[1800px] mx-auto px-4 py-4'
-          : 'max-w-4xl mx-auto px-4 py-8'
+          ? 'w-full max-w-[96rem] mx-auto px-4 py-4'
+          : 'max-w-[96rem] mx-auto px-4 py-8'
       }
     >
       <nav className={`flex gap-4 items-center flex-wrap ${isBlogEditor ? 'mb-4' : 'mb-8'}`}>
@@ -105,7 +105,7 @@ function AdminLayout() {
         </button>
       </nav>
       <Outlet />
-      <AuthDebugInfo />
+      <AuthDebugInfo className={isBlogEditor ? 'fixed bottom-4 right-4 z-10 max-w-xs' : 'mt-6'} />
     </div>
   )
 }

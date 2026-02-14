@@ -1,11 +1,9 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
 import { getBlogPosts } from '~/features/blog/api'
-import {
-  blogPostMatchesSearch,
-  getBlogPostPreview,
-} from '~/features/blog/searchArticle'
+import { blogPostMatchesSearch } from '~/features/blog/searchArticle'
 import type { BlogPost } from '~/features/blog/types'
+import { BlogCard } from '~/shared/components/BlogCard'
 import { useSearchParams } from '~/shared/hooks/useSearchParams'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -78,7 +76,7 @@ function BlogIndex() {
   const sortedKeys = Array.from(grouped.keys()).sort((a, b) => b.localeCompare(a))
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-[96rem] mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">ブログ</h1>
 
       <div className="mb-6">
@@ -147,45 +145,10 @@ function BlogIndex() {
               <h2 className="text-lg font-semibold text-zinc-400 mb-4">
                 {formatMonthLabel(key)}
               </h2>
-              <ul className="space-y-4">
-                {grouped.get(key)!.map((p) => {
-                  const preview = getBlogPostPreview(p)
-                  return (
-                    <li key={p.slug} className="relative">
-                      <Link
-                        to="/blog/$slug"
-                        params={{ slug: p.slug }}
-                        className="absolute inset-0 z-0 rounded-lg cursor-pointer"
-                        aria-label={`記事「${p.title}」を読む`}
-                      />
-                      <div className="relative z-10 rounded-lg bg-zinc-800/50 p-5 pointer-events-none">
-                        <h3 className="text-lg font-semibold text-cyan-400">
-                          {p.title}
-                        </h3>
-                        {preview && (
-                          <p className="mt-2 line-clamp-2 text-sm text-zinc-400">
-                            {preview}
-                          </p>
-                        )}
-                        {p.tags.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-1.5 pointer-events-auto">
-                            {p.tags.map((t) => (
-                              <Link
-                                key={t}
-                                to="/blog"
-                                search={{ tag: t }}
-                                className="text-xs px-2 py-0.5 rounded bg-zinc-700/60 text-zinc-400 hover:bg-zinc-600/60 hover:text-zinc-300"
-                              >
-                                {t}
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                        <p className="mt-3 text-xs text-zinc-500">{p.createdAt}</p>
-                      </div>
-                    </li>
-                  )
-                })}
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {grouped.get(key)!.map((p) => (
+                  <BlogCard key={p.slug} post={p} />
+                ))}
               </ul>
             </section>
           ))}

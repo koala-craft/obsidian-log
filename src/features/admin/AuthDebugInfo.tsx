@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { getSupabase } from '~/shared/lib/supabase'
 
-export function AuthDebugInfo() {
+export function AuthDebugInfo({ className = '' }: { className?: string }) {
   const [sessionInfo, setSessionInfo] = useState<{
     expiresAt: string | null
     lastRefreshAt: string | null
@@ -65,7 +65,9 @@ export function AuthDebugInfo() {
   if (!import.meta.env.DEV || !sessionInfo) return null
 
   return (
-    <div className="mt-6 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700 text-xs text-zinc-400 space-y-1">
+    <div
+      className={`p-4 rounded-lg bg-zinc-800/50 border border-zinc-700 text-xs text-zinc-400 space-y-1 ${className}`}
+    >
       <p className="font-medium text-zinc-300">[開発] 認証デバッグ</p>
       <p>トークン有効期限: {sessionInfo.expiresAt ?? '—'}</p>
       {sessionInfo.lastRefreshAt && (
