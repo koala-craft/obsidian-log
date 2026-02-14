@@ -16,9 +16,13 @@ export interface AppConfig {
   github_repo_url: string
   zenn_username: string
   admins: string[]
+  /** トップページの h1 */
+  site_title?: string
+  /** トップページの h1 直下の説明文 */
+  site_subtitle?: string
 }
 
-const CONFIG_PATH = '.obsidian-log/config.json'
+const CONFIG_PATHS = ['.obsidian-log/config.json', 'content/.obsidian-log/config.json']
 
 /** サーバー専用。ブラウザでは空文字を返す（process.cwd が存在しないため） */
 function getContentDir(): string {
@@ -54,6 +58,8 @@ function parseConfigJson(raw: string): AppConfig {
       admins: Array.isArray(parsed.admins)
         ? parsed.admins.filter((a): a is string => typeof a === 'string')
         : [],
+      site_title: typeof parsed.site_title === 'string' ? parsed.site_title : '',
+      site_subtitle: typeof parsed.site_subtitle === 'string' ? parsed.site_subtitle : '',
     }
   } catch {
     return { ...DEFAULT_CONFIG }
@@ -72,30 +78,50 @@ function readLocalConfig(): AppConfig | null {
 }
 
 /**
+ * サーバー用: ローカル config を書き込み
+ * GitHub 保存成功時に呼び、読み込み時のフォールバックを最新に保つ
+ */
+export function writeLocalConfig(config: AppConfig): void {
+  const localPath = getLocalConfigPath()
+  if (!localPath) return
+  try {
+    const dir = path.dirname(localPath)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(localPath, JSON.stringify(config, null, 2), 'utf-8')
+  } catch {
+    // 書き込み失敗は無視（GitHub が正とする）
+  }
+}
+
+/**
  * サーバー用: config.json を取得
- * 1. env GITHUB_REPO_URL から GitHub を取得
- * 2. 失敗時はローカル content/.obsidian-log/config.json
+ * 1. ローカル content/.obsidian-log/config.json を優先（保存時に常に更新されるため最新）
+ * 2. ローカルがなければ env / config の github_repo_url から GitHub を取得
  */
 export async function getConfigForServer(): Promise<AppConfig> {
+  const local = readLocalConfig()
+  if (local) return local
+
   const envUrl = getRepoUrlFromEnv()
-  if (envUrl) {
-    const parsed = parseRepoUrl(envUrl)
-    if (parsed) {
+  const urlsToTry: string[] = []
+  if (envUrl) urlsToTry.push(envUrl)
+
+  for (const repoUrl of urlsToTry) {
+    const parsed = parseRepoUrl(repoUrl)
+    if (!parsed) continue
+    for (const configPath of CONFIG_PATHS) {
       try {
         const content = await fetchFileContent(
           parsed.owner,
           parsed.repo,
-          CONFIG_PATH
+          configPath
         )
         if (content) return parseConfigJson(content)
       } catch {
-        // fallback to local
+        continue
       }
     }
   }
-
-  const local = readLocalConfig()
-  if (local) return local
 
   return { ...DEFAULT_CONFIG }
 }

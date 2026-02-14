@@ -143,6 +143,7 @@ function CommentBlock({
       <MarkdownWithLinkCards
         content={comment.body_markdown}
         proseClass={proseClass}
+        useNativeBr
       />
       {comment.children?.length ? (
         <div className="mt-4 space-y-4">

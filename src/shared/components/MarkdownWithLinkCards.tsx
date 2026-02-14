@@ -9,6 +9,8 @@ interface MarkdownWithLinkCardsProps {
   proseClass?: string
   /** br の縦余白（例: "0.25em", "0.5em"）。未指定時は CSS 変数 --prose-br-spacing のデフォルト値 */
   brSpacing?: string
+  /** true: br をネイティブのまま（p 内の line-height で余白）。false: br を prose-line-break に置換 */
+  useNativeBr?: boolean
 }
 
 const DEFAULT_PROSE =
@@ -21,11 +23,19 @@ function ProseLineBreak() {
 /**
  * 1行がリンクのみの場合はリンクカードとして表示、
  * それ以外は通常の Markdown として表示
+ *
+ * 改行の構造（remarkBreaks）:
+ * - 単一改行 → mdast Break → hast br（同一 p 内）
+ * - 空行 → 段落区切り → 別 p タグ
+ * prose-line-break（span）の挿入箇所:
+ * 1. br の置換: components.br で p 内の br を span に置き換え（hasLinkOnlyLine でない場合）
+ * 2. 空行の表現: hasLinkOnlyLine 時、空行を span で表現（ReactMarkdown 外）
  */
 export function MarkdownWithLinkCards({
   content,
   proseClass = DEFAULT_PROSE,
   brSpacing,
+  useNativeBr = false,
 }: MarkdownWithLinkCardsProps) {
   if (!content.trim()) return null
 
@@ -36,9 +46,8 @@ export function MarkdownWithLinkCards({
     '--prose-br-spacing': brSpacing ?? '0.25em',
   } as React.CSSProperties
 
-  const markdownComponents = {
-    br: () => <ProseLineBreak />,
-  }
+  // remarkBreaks: 単一改行→br（p 内）、空行→段落区切り（別 p）。useNativeBr 時は br をそのまま、否則は prose-line-break に置換
+  const markdownComponents = useNativeBr ? {} : { br: () => <ProseLineBreak /> }
 
   if (!hasLinkOnlyLine) {
     return (

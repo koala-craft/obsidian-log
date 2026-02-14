@@ -49,6 +49,14 @@ export async function getGithubRepoUrl(): Promise<string> {
   return config.github_repo_url
 }
 
+export async function getSiteHeader(): Promise<{ title: string; subtitle: string }> {
+  const config = await getConfig()
+  return {
+    title: config.site_title ?? '',
+    subtitle: config.site_subtitle ?? '',
+  }
+}
+
 export async function setGithubRepoUrl(url: string): Promise<{ success: boolean; error?: string }> {
   const validation = validateGithubRepoUrl(url)
   if (!validation.valid) {
@@ -65,7 +73,64 @@ export async function setZennUsername(username: string): Promise<{ success: bool
   return setConfigPartial({ zenn_username: username })
 }
 
-async function setConfigPartial(partial: Partial<Pick<AppConfig, 'github_repo_url' | 'zenn_username'>>): Promise<{ success: boolean; error?: string }> {
+const SITE_TITLE_MAX_LENGTH = 100
+const SITE_SUBTITLE_MAX_LENGTH = 200
+
+export function validateSiteHeader(title: string, subtitle: string): { valid: boolean; error?: string } {
+  if (title.length > SITE_TITLE_MAX_LENGTH) {
+    return { valid: false, error: `タイトルは${SITE_TITLE_MAX_LENGTH}文字以内で入力してください` }
+  }
+  if (subtitle.length > SITE_SUBTITLE_MAX_LENGTH) {
+    return { valid: false, error: `説明文は${SITE_SUBTITLE_MAX_LENGTH}文字以内で入力してください` }
+  }
+  return { valid: true }
+}
+
+export async function setSiteHeader(
+  title: string,
+  subtitle: string
+): Promise<{ success: boolean; error?: string }> {
+  const validation = validateSiteHeader(title, subtitle)
+  if (!validation.valid) {
+    return { success: false, error: validation.error }
+  }
+  return setConfigPartial({ site_title: title.trim(), site_subtitle: subtitle.trim() })
+}
+
+/**
+ * サイト設定を一括保存（競合を防ぎ、GitHub API 呼び出しを 1 回に抑える）
+ */
+export async function setSiteConfigAll(params: {
+  github_repo_url: string
+  zenn_username: string
+  site_title: string
+  site_subtitle: string
+}): Promise<{ success: boolean; error?: string }> {
+  const urlValidation = validateGithubRepoUrl(params.github_repo_url)
+  if (!urlValidation.valid) {
+    return { success: false, error: urlValidation.error }
+  }
+  const zennValidation = validateZennUsername(params.zenn_username)
+  if (!zennValidation.valid) {
+    return { success: false, error: zennValidation.error }
+  }
+  const headerValidation = validateSiteHeader(params.site_title, params.site_subtitle)
+  if (!headerValidation.valid) {
+    return { success: false, error: headerValidation.error }
+  }
+  return setConfigPartial({
+    github_repo_url: params.github_repo_url,
+    zenn_username: params.zenn_username,
+    site_title: params.site_title.trim(),
+    site_subtitle: params.site_subtitle.trim(),
+  })
+}
+
+async function setConfigPartial(
+  partial: Partial<
+    Pick<AppConfig, 'github_repo_url' | 'zenn_username' | 'site_title' | 'site_subtitle'>
+  >
+): Promise<{ success: boolean; error?: string }> {
   const { getSession } = await import('./auth')
   const session = await getSession()
   if (!session) return { success: false, error: 'ログインが必要です' }
@@ -78,6 +143,8 @@ async function setConfigPartial(partial: Partial<Pick<AppConfig, 'github_repo_ur
       github_repo_url: partial.github_repo_url ?? current.github_repo_url,
       zenn_username: partial.zenn_username ?? current.zenn_username,
       admins: current.admins,
+      site_title: partial.site_title ?? current.site_title ?? '',
+      site_subtitle: partial.site_subtitle ?? current.site_subtitle ?? '',
     },
   })
   return result

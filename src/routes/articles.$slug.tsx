@@ -66,6 +66,7 @@ function ArticleDetail() {
         <MarkdownWithLinkCards
           content={article.content}
           proseClass={`${PROSE_BASE} prose-sm`}
+          useNativeBr
         />
       </div>
     </article>

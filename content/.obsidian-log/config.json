@@ -1,6 +1,9 @@
 {
   "github_repo_url": "https://github.com/koala-craft/Blog-Repo",
   "zenn_username": "koala-craft",
-  "admins": ["koala-craft"]
+  "admins": [
+    "koala-craft"
+  ],
+  "site_title": "気楽に誠実に",
+  "site_subtitle": "koala-craft"
 }
-

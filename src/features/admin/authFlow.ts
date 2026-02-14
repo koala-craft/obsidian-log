@@ -8,12 +8,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { checkIsAdmin, getAdminCache, setAdminCache } from './auth'
 
 const INIT_DELAY_MS = 400
-const VISIBILITY_DELAY_MS = 300
+const VISIBILITY_DELAY_MS = 0
 const RETRY_DELAY_BASE_MS = 800
 const RETRY_INNER_DELAY_MS = 1000
-const MAX_ATTEMPTS = 4
+const MAX_ATTEMPTS = 2
 const INNER_RETRIES = 2
-export const AUTH_TIMEOUT_MS = 15_000
+export const AUTH_TIMEOUT_MS = 30_000
 const OAUTH_CALLBACK_RETRY_COUNT = 5
 const OAUTH_CALLBACK_DELAY_MS = 200
 

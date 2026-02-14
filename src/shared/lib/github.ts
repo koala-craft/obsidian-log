@@ -94,23 +94,38 @@ export async function fetchFileContent(
   return null
 }
 
+async function getFileShaWithRef(
+  owner: string,
+  repo: string,
+  path: string,
+  token: string,
+  ref?: string
+): Promise<string | null> {
+  const headers: Record<string, string> = {
+    ...GITHUB_HEADERS,
+    Authorization: `Bearer ${token}`,
+  }
+  const url = ref
+    ? `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(ref)}`
+    : `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`
+  const res = await fetchWithTimeout(url, { headers })
+  if (!res.ok) return null
+  const data = (await res.json()) as { sha?: string } | { sha?: string }[]
+  const file = Array.isArray(data) ? data[0] : data
+  return file?.sha ?? null
+}
+
 export async function getFileSha(
   owner: string,
   repo: string,
   path: string,
   token: string
 ): Promise<string | null> {
-  const headers: Record<string, string> = {
-    ...GITHUB_HEADERS,
-    Authorization: `Bearer ${token}`,
-  }
-  const res = await fetchWithTimeout(
-    `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`,
-    { headers }
-  )
-  if (!res.ok) return null
-  const data = (await res.json()) as { sha?: string }
-  return data.sha ?? null
+  let sha = await getFileShaWithRef(owner, repo, path, token)
+  if (sha) return sha
+  sha = await getFileShaWithRef(owner, repo, path, token, 'main')
+  if (sha) return sha
+  return getFileShaWithRef(owner, repo, path, token, 'master')
 }
 
 export async function updateFileOnGitHub(

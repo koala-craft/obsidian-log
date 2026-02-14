@@ -220,6 +220,7 @@ export function BlogEditor({
             <MarkdownWithLinkCards
               content={content || '*本文を入力するとプレビューが表示されます*'}
               proseClass={`${PROSE_BASE} prose-sm`}
+              useNativeBr
             />
           </div>
         </div>

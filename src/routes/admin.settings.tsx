@@ -1,12 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import {
   getGithubRepoUrl,
-  setGithubRepoUrl,
-  validateGithubRepoUrl,
   getZennUsername,
-  setZennUsername,
+  getSiteHeader,
+  setSiteConfigAll,
+  validateGithubRepoUrl,
   validateZennUsername,
+  validateSiteHeader,
 } from '~/features/admin/siteConfig'
 
 export const Route = createFileRoute('/admin/settings')({
@@ -14,8 +15,11 @@ export const Route = createFileRoute('/admin/settings')({
 })
 
 function AdminSettings() {
+  const router = useRouter()
   const [url, setUrl] = useState('')
   const [zennUsername, setZennUsernameState] = useState('')
+  const [siteTitle, setSiteTitle] = useState('')
+  const [siteSubtitle, setSiteSubtitle] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -23,10 +27,12 @@ function AdminSettings() {
   useEffect(() => {
     const LOAD_TIMEOUT_MS = 15_000
     const timer = setTimeout(() => setLoading(false), LOAD_TIMEOUT_MS)
-    Promise.all([getGithubRepoUrl(), getZennUsername()])
-      .then(([repoUrl, username]) => {
+    Promise.all([getGithubRepoUrl(), getZennUsername(), getSiteHeader()])
+      .then(([repoUrl, username, header]) => {
         setUrl(repoUrl)
         setZennUsernameState(username)
+        setSiteTitle(header.title)
+        setSiteSubtitle(header.subtitle)
       })
       .finally(() => {
         clearTimeout(timer)
@@ -47,18 +53,26 @@ function AdminSettings() {
       setMessage({ type: 'error', text: zennValidation.error ?? 'Zenn ユーザー名が不正です' })
       return
     }
+    const headerValidation = validateSiteHeader(siteTitle, siteSubtitle)
+    if (!headerValidation.valid) {
+      setMessage({ type: 'error', text: headerValidation.error ?? 'トップページの入力が不正です' })
+      return
+    }
     setSaving(true)
-    const [urlResult, zennResult] = await Promise.all([
-      setGithubRepoUrl(url),
-      setZennUsername(zennUsername),
-    ])
+    const result = await setSiteConfigAll({
+      github_repo_url: url,
+      zenn_username: zennUsername,
+      site_title: siteTitle,
+      site_subtitle: siteSubtitle,
+    })
     setSaving(false)
-    if (urlResult.success && zennResult.success) {
-      setMessage({ type: 'success', text: '保存しました。次回ビルド時に反映されます。' })
+    if (result.success) {
+      router.invalidate()
+      setMessage({ type: 'success', text: '保存しました。トップページに反映されます。' })
     } else {
       setMessage({
         type: 'error',
-        text: urlResult.error ?? zennResult.error ?? '保存に失敗しました',
+        text: result.error ?? '保存に失敗しました',
       })
     }
   }
@@ -77,6 +91,38 @@ function AdminSettings() {
       <h1 className="text-3xl font-bold mb-8">サイト設定</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+        <div>
+          <label htmlFor="site_title" className="block text-sm font-medium text-zinc-300 mb-2">
+            トップページ タイトル
+          </label>
+          <input
+            id="site_title"
+            type="text"
+            value={siteTitle}
+            onChange={(e) => setSiteTitle(e.target.value)}
+            placeholder="Obsidian Log"
+            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            disabled={saving}
+          />
+          <p className="text-xs text-zinc-500 mt-1">トップページの h1 に表示されます。</p>
+        </div>
+
+        <div>
+          <label htmlFor="site_subtitle" className="block text-sm font-medium text-zinc-300 mb-2">
+            トップページ 説明文
+          </label>
+          <input
+            id="site_subtitle"
+            type="text"
+            value={siteSubtitle}
+            onChange={(e) => setSiteSubtitle(e.target.value)}
+            placeholder="ブログアプリ"
+            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            disabled={saving}
+          />
+          <p className="text-xs text-zinc-500 mt-1">タイトル直下に表示されます。</p>
+        </div>
+
         <div>
           <label htmlFor="github_repo_url" className="block text-sm font-medium text-zinc-300 mb-2">
             GitHub リポジトリ URL

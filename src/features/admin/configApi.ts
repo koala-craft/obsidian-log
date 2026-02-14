@@ -5,6 +5,7 @@
 
 import { createServerFn } from '@tanstack/react-start'
 import type { AppConfig } from '~/shared/lib/config'
+import { writeLocalConfig } from '~/shared/lib/config'
 import { getSupabase } from '~/shared/lib/supabase'
 import {
   parseRepoUrl,
@@ -35,6 +36,8 @@ export type SetConfigInput = {
   github_repo_url: string
   zenn_username: string
   admins: string[]
+  site_title?: string
+  site_subtitle?: string
 }
 
 export const setConfig = createServerFn({ method: 'POST' })
@@ -77,18 +80,38 @@ export const setConfig = createServerFn({ method: 'POST' })
       github_repo_url: repoUrl,
       zenn_username: data.zenn_username.trim(),
       admins: Array.isArray(data.admins) ? data.admins.filter((a): a is string => typeof a === 'string') : [],
+      site_title: typeof data.site_title === 'string' ? data.site_title.trim() : '',
+      site_subtitle: typeof data.site_subtitle === 'string' ? data.site_subtitle.trim() : '',
     }
 
     const content = JSON.stringify(config, null, 2)
-    const sha = await getFileSha(parsed.owner, parsed.repo, CONFIG_PATH, token)
+    const maxRetries = 3
 
-    return updateFileOnGitHub(
-      parsed.owner,
-      parsed.repo,
-      CONFIG_PATH,
-      content,
-      'chore: update obsidian-log config',
-      token,
-      sha
-    )
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const sha = await getFileSha(parsed.owner, parsed.repo, CONFIG_PATH, token)
+      const result = await updateFileOnGitHub(
+        parsed.owner,
+        parsed.repo,
+        CONFIG_PATH,
+        content,
+        'chore: update obsidian-log config',
+        token,
+        sha
+      )
+
+      if (result.success) {
+        writeLocalConfig(config)
+        return result
+      }
+
+      const shaMismatch =
+        result.error &&
+        (result.error.includes("wasn't supplied") ||
+          (result.error.includes('is at') && result.error.includes('but expected')) ||
+        result.error.includes('does not match'))
+
+      if (!shaMismatch || attempt === maxRetries - 1) return result
+    }
+
+    return { success: false, error: '更新に失敗しました' }
   })
