@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '~/features/admin/useAuth'
-import { TECH_DEFAULT_SEARCH } from '~/routes/tech.types'
+import { TECH_DEFAULT_SEARCH } from '~/shared/types/techSearch'
 
 export function HeaderNav() {
   const { user } = useAuth()

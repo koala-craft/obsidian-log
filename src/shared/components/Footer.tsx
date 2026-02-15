@@ -1,9 +1,9 @@
-import { Link } from '@tanstack/react-router'
-import { Route } from '~/routes/__root/route'
-import { TECH_DEFAULT_SEARCH } from '~/routes/tech.types'
+import { Link, useLoaderData } from '@tanstack/react-router'
+import type { RootLoaderData } from '~/shared/types/rootLoader'
+import { TECH_DEFAULT_SEARCH } from '~/shared/types/techSearch'
 
 export function Footer() {
-  const rootData = Route.useLoaderData()
+  const rootData = useLoaderData({ from: '__root__' }) as RootLoaderData
   const siteTitle = rootData.siteTitle.trim() || '気楽に誠実に'
 
   return (

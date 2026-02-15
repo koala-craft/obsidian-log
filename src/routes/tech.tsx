@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
-import { TECH_DEFAULT_SEARCH } from '~/routes/tech.types'
+import { TECH_DEFAULT_SEARCH } from '~/shared/types/techSearch'
 
 export const Route = createFileRoute('/tech')({
   component: TechLayout,

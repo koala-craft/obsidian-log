@@ -8,7 +8,7 @@ import { parseScrapTitle } from '~/features/scraps/parseScrapTitle'
 import { scrapMatchesSearch, getScrapPreview } from '~/features/scraps/searchScrap'
 import type { Article } from '~/features/articles/types'
 import type { ScrapWithSlug } from '~/features/scraps/types'
-import type { TechSearchParams, TechTab } from '~/routes/tech.types'
+import type { TechSearchParams, TechTab } from '~/shared/types/techSearch'
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -73,7 +73,7 @@ function TechIndex() {
   const scrapTag = search?.scrapTag
   const q = search?.q
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<Tab>(tab ?? 'articles')
+  const [activeTab, setActiveTab] = useState<TechTab>(tab ?? 'articles')
   const [searchInput, setSearchInput] = useState(q ?? '')
   const navigateRef = useRef(navigate)
   navigateRef.current = navigate
