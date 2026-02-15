@@ -12,6 +12,8 @@ import {
   getFileSha,
   updateFileOnGitHub,
   deleteFileOnGitHub,
+  fetchDirectoryWithSha,
+  fetchRawFileBinary,
 } from '~/shared/lib/github'
 import { validateSlug } from '~/shared/lib/slug'
 import { saveTempImage, clearTempAssets, readTempImage } from '~/shared/lib/blogTempAssets'
@@ -144,7 +146,10 @@ export const createBlogPost = createServerFn({ method: 'POST' })
 export type UpdateBlogPostInput = {
   accessToken: string
   providerToken?: string
+  /** 現在のスラッグ（編集対象の記事） */
   slug: string
+  /** スラッグ変更時のみ指定。変更後のスラッグ */
+  newSlug?: string
   title: string
   content: string
   tags?: string[]
@@ -157,6 +162,15 @@ export type UpdateBlogPostInput = {
 export const updateBlogPost = createServerFn({ method: 'POST' })
   .inputValidator((data: UpdateBlogPostInput) => data)
   .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      return await updateBlogPostHandler(data)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { success: false, error: msg || '保存に失敗しました' }
+    }
+  })
+
+async function updateBlogPostHandler(data: UpdateBlogPostInput): Promise<{ success: boolean; error?: string }> {
     const supabase = getSupabase()
     if (!supabase) return { success: false, error: 'Supabase が設定されていません' }
 
@@ -174,6 +188,21 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
       return { success: false, error: 'スラッグは英数字・ハイフン・アンダースコアのみ使用できます' }
     }
 
+    const isSlugChange = Boolean(
+      data.newSlug?.trim() &&
+      data.newSlug.trim() !== data.slug &&
+      validateSlug(data.newSlug.trim())
+    )
+    const newSlug = isSlugChange ? data.newSlug!.trim() : data.slug
+
+    if (isSlugChange) {
+      const { getBlogPost } = await import('./api')
+      const existingByNew = await getBlogPost({ data: { slug: newSlug } })
+      if (existingByNew) {
+        return { success: false, error: `スラッグ「${newSlug}」は既に使用されています` }
+      }
+    }
+
     const githubUrl = await getGithubRepoUrlForServer()
     if (!githubUrl || !isValidGithubRepoUrl(githubUrl)) {
       return { success: false, error: 'GitHub リポジトリ URL を設定してください' }
@@ -187,18 +216,25 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
       return { success: false, error: 'GitHub トークンが必要です。ログインし直すか、GITHUB_TOKEN を設定してください' }
     }
 
-    const path = `${BLOG_DIR}/${data.slug}.md`
-    const sha = await getFileSha(parsed.owner, parsed.repo, path, token)
+    const oldPath = `${BLOG_DIR}/${data.slug}.md`
+    const sha = await getFileSha(parsed.owner, parsed.repo, oldPath, token)
     if (!sha) return { success: false, error: '記事が見つかりません' }
 
     const { getBlogPost } = await import('./api')
     const existing = await getBlogPost({ data: { slug: data.slug } })
     const now = new Date().toISOString().split('T')[0] ?? ''
 
+    let contentToSave = data.content ?? ''
+    if (isSlugChange) {
+      contentToSave = contentToSave
+        .split(`blog/assets/${data.slug}/`)
+        .join(`blog/assets/${newSlug}/`)
+    }
+
     const post: BlogPost = {
-      slug: data.slug,
-      title: data.title.trim() || data.slug,
-      content: data.content ?? '',
+      slug: newSlug,
+      title: data.title.trim() || newSlug,
+      content: contentToSave,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       tags: Array.isArray(data.tags) ? data.tags : [],
@@ -206,30 +242,103 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
       firstView: data.firstView?.trim() || undefined,
     }
 
+    if (isSlugChange) {
+      post.firstView = post.firstView
+        ? post.firstView
+            .split(`blog/assets/${data.slug}/`)
+            .join(`blog/assets/${newSlug}/`)
+        : undefined
+    }
+
     const content = buildMarkdownContent(post)
 
-    const result = await updateFileOnGitHub(
-      parsed.owner,
-      parsed.repo,
-      path,
-      content,
-      `blog: update ${data.slug}`,
-      token,
-      sha
-    )
-    if (!result.success) return result
+    if (isSlugChange) {
+      const newPath = `${BLOG_DIR}/${newSlug}.md`
+      const newFileSha = await getFileSha(parsed.owner, parsed.repo, newPath, token)
+      if (newFileSha) {
+        return { success: false, error: `スラッグ「${newSlug}」は既に使用されています` }
+      }
+
+      const createResult = await updateFileOnGitHub(
+        parsed.owner,
+        parsed.repo,
+        newPath,
+        content,
+        `blog: add ${newSlug} (rename from ${data.slug})`,
+        token,
+        undefined
+      )
+      if (!createResult.success) return createResult
+
+      const assetsDir = `blog/assets/${data.slug}`
+      const assets = await fetchDirectoryWithSha(
+        parsed.owner,
+        parsed.repo,
+        assetsDir,
+        token
+      )
+      for (const file of assets) {
+        const buf = await fetchRawFileBinary(file.download_url)
+        if (!buf) continue
+        const base64 = Buffer.from(buf).toString('base64')
+        const newAssetPath = `blog/assets/${newSlug}/${file.name}`
+        const uploadResult = await updateFileOnGitHub(
+          parsed.owner,
+          parsed.repo,
+          newAssetPath,
+          base64,
+          `blog: move asset to ${newSlug}`,
+          token,
+          undefined,
+          true
+        )
+        if (!uploadResult.success) continue
+        await deleteFileOnGitHub(
+          parsed.owner,
+          parsed.repo,
+          file.path,
+          `blog: remove asset from ${data.slug}`,
+          token,
+          file.sha
+        )
+      }
+
+      const deleteResult = await deleteFileOnGitHub(
+        parsed.owner,
+        parsed.repo,
+        oldPath,
+        `blog: remove ${data.slug} (renamed to ${newSlug})`,
+        token,
+        sha
+      )
+      if (!deleteResult.success) return deleteResult
+    } else {
+      const result = await updateFileOnGitHub(
+        parsed.owner,
+        parsed.repo,
+        oldPath,
+        content,
+        `blog: update ${data.slug}`,
+        token,
+        sha
+      )
+      if (!result.success) return result
+    }
 
     // マークダウン更新成功後: 未使用の旧ファーストビュー画像を GitHub から削除
+    // スラッグ変更時はアセット移動で既に処理済みのためスキップ
     const newFirstViewPath = post.firstView
       ? getFirstViewPathFromRawUrl(post.firstView, parsed.owner, parsed.repo)
       : null
-    const prevPath = data.previousFirstView?.trim()
-      ? getFirstViewPathFromRawUrl(
-          data.previousFirstView.trim(),
-          parsed.owner,
-          parsed.repo
-        )
-      : null
+    const prevPath =
+      !isSlugChange &&
+      data.previousFirstView?.trim()
+        ? getFirstViewPathFromRawUrl(
+            data.previousFirstView.trim(),
+            parsed.owner,
+            parsed.repo
+          )
+        : null
     if (prevPath && prevPath !== newFirstViewPath) {
       const prevSha = await getFileSha(parsed.owner, parsed.repo, prevPath, token)
       if (prevSha) {
@@ -244,8 +353,8 @@ export const updateBlogPost = createServerFn({ method: 'POST' })
       }
     }
 
-    return result
-  })
+    return { success: true }
+  }
 
 export type SaveBlogImageToTempInput = {
   filename: string
@@ -305,6 +414,21 @@ export const prepareBlogContentForSave = createServerFn({ method: 'POST' })
       | { success: true; content: string; firstView?: string }
       | { success: false; error: string }
     > => {
+      try {
+        return await prepareBlogContentForSaveHandler(data)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { success: false, error: msg || '画像のアップロードに失敗しました' }
+      }
+    }
+  )
+
+async function prepareBlogContentForSaveHandler(
+  data: PrepareBlogContentForSaveInput
+): Promise<
+  | { success: true; content: string; firstView?: string }
+  | { success: false; error: string }
+> {
       const supabase = getSupabase()
       if (!supabase) return { success: false, error: 'Supabase が設定されていません' }
 
@@ -404,8 +528,7 @@ export const prepareBlogContentForSave = createServerFn({ method: 'POST' })
       }
 
       return { success: true, content: updatedContent, firstView: resolvedFirstView }
-    }
-  )
+  }
 
 export type UploadBlogImageInput = {
   accessToken: string

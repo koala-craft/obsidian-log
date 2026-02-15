@@ -1,4 +1,4 @@
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Send } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 const INPUT_STYLES =
@@ -11,16 +11,17 @@ export function ContactForm() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [result, setResult] = useState<
     { type: 'success' | 'error'; text: string } | null
   >(null)
   const [submitted, setSubmitted] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const doSubmit = async () => {
     setResult(null)
     setSending(true)
+    setShowConfirmModal(false)
 
     try {
       const res = await fetch('/api/contact', {
@@ -49,6 +50,25 @@ export function ContactForm() {
       setSending(false)
     }
   }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    if (!form.checkValidity()) {
+      form.reportValidity()
+      return
+    }
+    setShowConfirmModal(true)
+  }
+
+  useEffect(() => {
+    if (!showConfirmModal) return
+    const handleEscape = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setShowConfirmModal(false)
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [showConfirmModal])
 
   if (submitted) {
     return <ContactSuccess />
@@ -141,21 +161,141 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={sending}
-        className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950 min-w-[120px]"
+        className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-zinc-600 bg-zinc-800/80 text-zinc-200 hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-400 disabled:border-zinc-700 disabled:bg-zinc-800/50 disabled:text-zinc-500 disabled:cursor-not-allowed font-medium transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:ring-offset-2 focus:ring-offset-zinc-950 min-w-[140px]"
       >
         {sending ? (
           <>
             <span
-              className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+              className="inline-block w-4 h-4 border-2 border-zinc-500/30 border-t-cyan-400 rounded-full animate-spin"
               aria-hidden
             />
             送信中
           </>
         ) : (
-          '送信する'
+          <>
+            <Send
+              className="w-4 h-4 shrink-0 text-zinc-500 group-hover:text-cyan-400 transition-colors"
+              aria-hidden
+            />
+            内容を確認する
+          </>
         )}
       </button>
+
+      {showConfirmModal && (
+        <ConfirmModal
+          name={name}
+          email={email}
+          message={message}
+          onConfirm={doSubmit}
+          onCancel={() => setShowConfirmModal(false)}
+          sending={sending}
+        />
+      )}
     </form>
+  )
+}
+
+function ConfirmModal({
+  name,
+  email,
+  message,
+  onConfirm,
+  onCancel,
+  sending,
+}: {
+  name: string
+  email: string
+  message: string
+  onConfirm: () => void
+  onCancel: () => void
+  sending: boolean
+}) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    cancelRef.current?.focus()
+  }, [])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-desc"
+    >
+      <div
+        className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
+        aria-hidden="true"
+        onClick={onCancel}
+      />
+      <div
+        className="relative flex max-h-[90vh] w-full max-w-md flex-col rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl shadow-zinc-950/50"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="overflow-y-auto p-5 sm:p-6 min-h-0">
+          <h2
+            id="confirm-modal-title"
+            className="text-lg font-semibold text-zinc-100 mb-1"
+          >
+            送信内容の確認
+          </h2>
+          <p
+            id="confirm-modal-desc"
+            className="text-sm text-zinc-500 mb-4"
+          >
+            以下の内容で送信してよろしいですか？
+          </p>
+          <div className="space-y-3 rounded-lg bg-zinc-800/60 border border-zinc-700/80 p-4 text-sm">
+            <div>
+              <span className="text-zinc-500 block text-xs mb-0.5">お名前</span>
+              <p className="text-zinc-200 break-words">{name}</p>
+            </div>
+            <div>
+              <span className="text-zinc-500 block text-xs mb-0.5">メールアドレス</span>
+              <p className="text-zinc-200 break-all">{email}</p>
+            </div>
+            <div>
+              <span className="text-zinc-500 block text-xs mb-0.5">お問い合わせ内容</span>
+              <p className="text-zinc-200 whitespace-pre-wrap break-words">{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-3 px-5 sm:px-6 pb-5 sm:pb-6">
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={onCancel}
+            disabled={sending}
+            className="flex-1 px-4 py-2.5 rounded-lg border border-zinc-600 bg-zinc-800/80 text-zinc-300 hover:border-zinc-500 hover:text-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:ring-offset-2 focus:ring-offset-zinc-900"
+          >
+            キャンセル
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={sending}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-cyan-500/50 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/70 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:ring-offset-2 focus:ring-offset-zinc-900"
+          >
+            {sending ? (
+              <>
+                <span
+                  className="inline-block w-3.5 h-3.5 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin"
+                  aria-hidden
+                />
+                送信中
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 shrink-0" aria-hidden />
+                送信する
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

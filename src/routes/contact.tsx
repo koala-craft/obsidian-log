@@ -15,7 +15,7 @@ function ContactPage() {
 
   if (!contactAvailable) {
     return (
-      <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+      <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-xl">
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-4">
             Contact
@@ -30,14 +30,14 @@ function ContactPage() {
   }
 
   return (
-    <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+    <div className="max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-xl">
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-2">
           Contact
         </h1>
         <p className="text-zinc-500 text-sm sm:text-base mb-10 leading-relaxed">
           以下のフォームよりお問い合わせください。
-          内容を確認のうえ、2〜3営業日以内にご返信いたします。
+          2,3日以内に確認しご返信いたします。
         </p>
         <ContactForm />
       </div>

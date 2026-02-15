@@ -3,6 +3,7 @@ import { getArticle } from '~/features/articles/api'
 import { MarkdownWithLinkCards } from '~/shared/components/MarkdownWithLinkCards'
 import { ArticleAuthorFooter } from '~/shared/components/ArticleAuthorFooter'
 import { useSiteAuthor } from '~/shared/hooks/useSiteAuthor'
+import { useZennUsername } from '~/shared/hooks/useZennUsername'
 
 const PROSE_BASE =
   'prose prose-invert prose-zinc max-w-none tracking-tight prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline prose-p:text-[1.05rem] prose-p:leading-[1.7] prose-li:text-[1.05rem] prose-li:my-0.5 prose-headings:font-semibold'
@@ -18,7 +19,8 @@ export const Route = createFileRoute('/articles/$slug')({
 
 function ArticleDetail() {
   const { article } = Route.useLoaderData()
-  const zennUsername = useSiteAuthor()
+  const zennUsername = useZennUsername()
+  const authorName = useSiteAuthor()
   const zennArticleUrl =
     zennUsername && article
       ? `https://zenn.dev/${zennUsername}/articles/${article.slug}`
@@ -68,7 +70,7 @@ function ArticleDetail() {
           proseClass={`${PROSE_BASE} prose-sm`}
           useNativeBr
         />
-        <ArticleAuthorFooter authorName={zennUsername} />
+        <ArticleAuthorFooter authorName={authorName} />
       </div>
     </article>
     </div>

@@ -15,6 +15,8 @@ import {
 export interface AppConfig {
   github_repo_url: string
   zenn_username: string
+  /** サイト上で表示する作者名（Zenn ユーザー名とは別） */
+  author_name?: string
   admins: string[]
   /** トップページの h1 */
   site_title?: string
@@ -57,6 +59,7 @@ function parseConfigJson(raw: string): AppConfig {
     return {
       github_repo_url: typeof parsed.github_repo_url === 'string' ? parsed.github_repo_url : '',
       zenn_username: typeof parsed.zenn_username === 'string' ? parsed.zenn_username : '',
+      author_name: typeof parsed.author_name === 'string' ? parsed.author_name.trim() : '',
       admins: Array.isArray(parsed.admins)
         ? parsed.admins.filter((a): a is string => typeof a === 'string')
         : [],
@@ -147,6 +150,14 @@ export async function getGithubRepoUrlForServer(): Promise<string> {
 export async function getZennUsernameForServer(): Promise<string> {
   const config = await getConfigForServer()
   return config.zenn_username.trim()
+}
+
+/**
+ * サーバー用: 作者名を取得
+ */
+export async function getAuthorNameForServer(): Promise<string> {
+  const config = await getConfigForServer()
+  return config.author_name?.trim() ?? ''
 }
 
 export async function getAuthorIconForServer(): Promise<string> {

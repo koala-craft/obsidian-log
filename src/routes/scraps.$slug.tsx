@@ -6,6 +6,7 @@ import { ArticleAuthorFooter } from '~/shared/components/ArticleAuthorFooter'
 import { parseScrapTitle } from '~/features/scraps/parseScrapTitle'
 import type { ScrapComment } from '~/features/scraps/types'
 import { useSiteAuthor } from '~/shared/hooks/useSiteAuthor'
+import { useZennUsername } from '~/shared/hooks/useZennUsername'
 
 export const Route = createFileRoute('/scraps/$slug')({
   component: ScrapDetail,
@@ -25,7 +26,8 @@ function countComments(comments: ScrapComment[]): number {
 
 function ScrapDetail() {
   const { scrap } = Route.useLoaderData()
-  const zennUsername = useSiteAuthor()
+  const zennUsername = useZennUsername()
+  const authorName = useSiteAuthor()
   const { displayTitle, tags } = parseScrapTitle(scrap.title)
   const zennScrapUrl = zennUsername
     ? `https://zenn.dev/${zennUsername}/scraps/${scrap.slug}`
@@ -93,7 +95,7 @@ function ScrapDetail() {
         </div>
       </section>
 
-      <ArticleAuthorFooter authorName={zennUsername} />
+      <ArticleAuthorFooter authorName={authorName} />
     </article>
     </div>
   )

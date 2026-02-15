@@ -73,16 +73,18 @@ function AdminLayout() {
     '管理者'
 
   const isBlogEditor = /^\/admin\/blog\/(new|[^/]+)$/.test(pathname)
+  const isWorkEditor = /^\/admin\/works\/(new|[^/]+)$/.test(pathname)
+  const isEditor = isBlogEditor || isWorkEditor
 
   return (
     <div
       className={
-        isBlogEditor
+        isEditor
           ? 'w-full max-w-[96rem] mx-auto px-4 py-4'
           : 'max-w-[96rem] mx-auto px-4 py-8'
       }
     >
-      <nav className={`flex gap-4 items-center flex-wrap ${isBlogEditor ? 'mb-4' : 'mb-8'}`}>
+      <nav className={`flex gap-4 items-center flex-wrap ${isEditor ? 'mb-4' : 'mb-8'}`}>
         <Link to="/admin" className="text-cyan-400 hover:underline">
           ダッシュボード
         </Link>
@@ -91,6 +93,9 @@ function AdminLayout() {
         </Link>
         <Link to="/admin/settings" className="text-cyan-400 hover:underline">
           サイト設定
+        </Link>
+        <Link to="/admin/works" className="text-cyan-400 hover:underline">
+          Work
         </Link>
         <Link to="/" className="text-zinc-500 hover:underline ml-auto">
           サイトに戻る
@@ -105,7 +110,7 @@ function AdminLayout() {
         </button>
       </nav>
       <Outlet />
-      <AuthDebugInfo className={isBlogEditor ? 'fixed bottom-4 right-4 z-10 max-w-xs' : 'mt-6'} />
+      <AuthDebugInfo className={isEditor ? 'fixed bottom-4 right-4 z-10 max-w-xs' : 'mt-6'} />
     </div>
   )
 }

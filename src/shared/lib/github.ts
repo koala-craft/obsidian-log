@@ -36,6 +36,7 @@ interface GitHubFile {
   name: string
   path: string
   type: string
+  sha?: string
   download_url: string | null
   content?: string
   encoding?: string
@@ -66,6 +67,35 @@ export async function fetchDirectory(
   return items
     .filter((f) => f.type === 'file' && f.download_url)
     .map((f) => ({ name: f.name, download_url: f.download_url! }))
+}
+
+/** ディレクトリ内のファイル一覧（sha, download_url 含む。リネーム時に使用） */
+export async function fetchDirectoryWithSha(
+  owner: string,
+  repo: string,
+  path: string,
+  token: string
+): Promise<{ name: string; path: string; sha: string; download_url: string }[]> {
+  const headers: Record<string, string> = {
+    ...GITHUB_HEADERS,
+    Authorization: `Bearer ${token}`,
+  }
+  const res = await fetchWithTimeout(
+    `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`,
+    { headers }
+  )
+  if (!res.ok) return []
+
+  const data = (await res.json()) as GitHubFile | GitHubFile[]
+  const items = Array.isArray(data) ? data : [data]
+  return items
+    .filter((f) => f.type === 'file' && f.sha && f.download_url)
+    .map((f) => ({
+      name: f.name,
+      path: f.path,
+      sha: f.sha!,
+      download_url: f.download_url!,
+    }))
 }
 
 export async function fetchFileContent(

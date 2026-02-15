@@ -1,7 +1,10 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useLoaderData } from '@tanstack/react-router'
 
 export function Footer() {
-  const year = new Date().getFullYear()
+  const rootData = useLoaderData({ from: '__root__', strict: false }) as {
+    siteTitle?: string
+  }
+  const siteTitle = rootData?.siteTitle?.trim() || 'Obsidian Log'
 
   return (
     <footer className="relative z-10 border-t border-zinc-800 mt-auto">
@@ -25,6 +28,13 @@ export function Footer() {
               className="text-sm text-zinc-500 hover:text-cyan-400 transition"
             >
               Blog
+            </Link>
+            <Link
+              to="/tech"
+              search={{ tab: 'articles', articleTag: undefined, scrapTag: undefined, q: undefined }}
+              className="text-sm text-zinc-500 hover:text-cyan-400 transition"
+            >
+              Tech
             </Link>
             <Link
               to="/contact"
@@ -57,7 +67,7 @@ export function Footer() {
             </a>
           </nav>
           <p className="text-sm text-zinc-600">
-            © {year} Obsidian Log
+            © 2026 {siteTitle}
           </p>
         </div>
       </div>

@@ -3,11 +3,13 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   getGithubRepoUrl,
   getZennUsername,
+  getAuthorName,
   getSiteHeader,
   getAuthorIcon,
   setSiteConfigAll,
   validateGithubRepoUrl,
   validateZennUsername,
+  validateAuthorName,
   validateSiteHeader,
 } from '~/features/admin/siteConfig'
 import { uploadAuthorIcon } from '~/features/admin/configApi'
@@ -22,6 +24,7 @@ function AdminSettings() {
   const router = useRouter()
   const [url, setUrl] = useState('')
   const [zennUsername, setZennUsernameState] = useState('')
+  const [authorName, setAuthorNameState] = useState('')
   const [siteTitle, setSiteTitle] = useState('')
   const [siteSubtitle, setSiteSubtitle] = useState('')
   const [authorIcon, setAuthorIcon] = useState('')
@@ -33,10 +36,11 @@ function AdminSettings() {
   useEffect(() => {
     const LOAD_TIMEOUT_MS = 15_000
     const timer = setTimeout(() => setLoading(false), LOAD_TIMEOUT_MS)
-    Promise.all([getGithubRepoUrl(), getZennUsername(), getSiteHeader(), getAuthorIcon()])
-      .then(([repoUrl, username, header, icon]) => {
+    Promise.all([getGithubRepoUrl(), getZennUsername(), getAuthorName(), getSiteHeader(), getAuthorIcon()])
+      .then(([repoUrl, username, name, header, icon]) => {
         setUrl(repoUrl)
         setZennUsernameState(username)
+        setAuthorNameState(name)
         setSiteTitle(header.title)
         setSiteSubtitle(header.subtitle)
         setAuthorIcon(icon)
@@ -130,6 +134,11 @@ function AdminSettings() {
       setMessage({ type: 'error', text: zennValidation.error ?? 'Zenn ユーザー名が不正です' })
       return
     }
+    const authorNameValidation = validateAuthorName(authorName)
+    if (!authorNameValidation.valid) {
+      setMessage({ type: 'error', text: authorNameValidation.error ?? '作者名が不正です' })
+      return
+    }
     const headerValidation = validateSiteHeader(siteTitle, siteSubtitle)
     if (!headerValidation.valid) {
       setMessage({ type: 'error', text: headerValidation.error ?? 'トップページの入力が不正です' })
@@ -139,6 +148,7 @@ function AdminSettings() {
     const result = await setSiteConfigAll({
       github_repo_url: url,
       zenn_username: zennUsername,
+      author_name: authorName,
       site_title: siteTitle,
       site_subtitle: siteSubtitle,
       author_icon: authorIcon,
@@ -271,7 +281,25 @@ function AdminSettings() {
             disabled={saving}
           />
           <p className="text-xs text-zinc-500 mt-1">
-            記事・スクラップ詳細ページに「Zenn で見る」リンクを表示します。空の場合は非表示。
+            記事・スクラップ詳細ページの「Zenn で見る」リンク生成に使用。空の場合は非表示。
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="author_name" className="block text-sm font-medium text-zinc-300 mb-2">
+            作者名
+          </label>
+          <input
+            id="author_name"
+            type="text"
+            value={authorName}
+            onChange={(e) => setAuthorNameState(e.target.value)}
+            placeholder="表示用の作者名"
+            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            disabled={saving}
+          />
+          <p className="text-xs text-zinc-500 mt-1">
+            Author ページ・記事フッターなどで表示する作者名。Zenn ユーザー名とは別に管理します。
           </p>
         </div>
 

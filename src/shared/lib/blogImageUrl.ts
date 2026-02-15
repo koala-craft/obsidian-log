@@ -18,7 +18,8 @@ export function getBlogImageSrc(src: string): string {
   if (
     (normalized.startsWith('blog/assets/') ||
       normalized.startsWith('content/blog/assets/') ||
-      normalized.startsWith('.obsidian-log/author-icon')) &&
+      normalized.startsWith('.obsidian-log/author-icon') ||
+      normalized.startsWith('.obsidian-log/works/')) &&
     /\.(png|jpg|jpeg|gif|webp)$/i.test(normalized)
   ) {
     const pathParam = normalized.startsWith('content/')

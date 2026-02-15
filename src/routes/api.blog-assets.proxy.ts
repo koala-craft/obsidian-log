@@ -20,8 +20,9 @@ const RAW_PREFIX = 'https://raw.githubusercontent.com/'
 const CONTENT_DIR = path.join(process.cwd(), 'content')
 const BLOG_ASSETS_PREFIX = 'blog/assets/'
 const AUTHOR_ICON_PREFIX = '.obsidian-log/author-icon'
+const WORKS_PREFIX = '.obsidian-log/works/'
 
-/** owner/repo が一致し、かつ blog/assets/ または .obsidian-log/author-icon 配下の画像のみ許可 */
+/** owner/repo が一致し、かつ blog/assets/、.obsidian-log/author-icon、.obsidian-log/works/ 配下の画像のみ許可 */
 function isAllowedUrl(url: string, allowedOwner: string, allowedRepo: string): boolean {
   if (!url.startsWith(RAW_PREFIX)) return false
   const pathStr = url.slice(RAW_PREFIX.length)
@@ -33,7 +34,8 @@ function isAllowedUrl(url: string, allowedOwner: string, allowedRepo: string): b
   const allowedExt = /\.(png|jpg|jpeg|gif|webp)$/i
   const isBlogAsset = owner === allowedOwner && repo === allowedRepo && filePath.startsWith(BLOG_ASSETS_PREFIX)
   const isAuthorIcon = owner === allowedOwner && repo === allowedRepo && filePath.startsWith(AUTHOR_ICON_PREFIX)
-  return (isBlogAsset || isAuthorIcon) && allowedExt.test(filePath)
+  const isWorkThumbnail = owner === allowedOwner && repo === allowedRepo && filePath.startsWith(WORKS_PREFIX)
+  return (isBlogAsset || isAuthorIcon || isWorkThumbnail) && allowedExt.test(filePath)
 }
 
 /** raw URL から content 内の相対パスを取得 */
@@ -45,21 +47,25 @@ function getLocalPathFromRawUrl(rawUrl: string): string | null {
   const [, , , ...rest] = parts
   const filePath = rest.join('/')
   if (
-    (!filePath.startsWith(BLOG_ASSETS_PREFIX) && !filePath.startsWith(AUTHOR_ICON_PREFIX)) ||
+    (!filePath.startsWith(BLOG_ASSETS_PREFIX) &&
+      !filePath.startsWith(AUTHOR_ICON_PREFIX) &&
+      !filePath.startsWith(WORKS_PREFIX)) ||
     filePath.includes('..')
   )
     return null
   return filePath
 }
 
-/** path パラメータが blog/assets/ または .obsidian-log/author-icon 配下の有効な画像パスか検証 */
+/** path パラメータが blog/assets/、.obsidian-log/author-icon、.obsidian-log/works/ 配下の有効な画像パスか検証 */
 function isValidAssetPath(p: string): boolean {
   const normalized = p.replace(/^\/+/, '').replace(/\\/g, '/')
   if (normalized.includes('..')) return false
   const isBlogAsset = normalized.startsWith(BLOG_ASSETS_PREFIX)
   const isAuthorIcon =
     normalized.startsWith(AUTHOR_ICON_PREFIX) && /author-icon\.(png|jpg|jpeg|gif|webp)$/i.test(normalized)
-  return (isBlogAsset || isAuthorIcon) && /\.(png|jpg|jpeg|gif|webp)$/i.test(normalized)
+  const isWorkThumbnail =
+    normalized.startsWith(WORKS_PREFIX) && /\/thumbnail\.(png|jpg|jpeg|gif|webp)$/i.test(normalized)
+  return (isBlogAsset || isAuthorIcon || isWorkThumbnail) && /\.(png|jpg|jpeg|gif|webp)$/i.test(normalized)
 }
 
 function getContentType(ext: string): string {

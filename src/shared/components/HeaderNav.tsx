@@ -29,6 +29,14 @@ export function HeaderNav() {
         >
           Blog
         </Link>
+        <Link
+          to="/tech"
+          search={{ tab: 'articles', articleTag: undefined, scrapTag: undefined, q: undefined }}
+          activeProps={{ className: 'font-bold text-cyan-400' }}
+          className="hover:text-cyan-400 transition"
+        >
+          Tech
+        </Link>
       </div>
       <Link
         to="/"

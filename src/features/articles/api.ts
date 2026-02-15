@@ -50,10 +50,11 @@ function parseArticle(content: string, slug: string): Article | null {
 
   const [, frontmatter, body] = frontmatterMatch
   const title = frontmatter.match(/title:\s*(.+)/)?.[1]?.trim() ?? slug
-  const createdAt =
+  const rawCreatedAt =
     frontmatter.match(/createdAt:\s*(.+)/)?.[1]?.trim() ??
     frontmatter.match(/published_at:\s*(.+)/)?.[1]?.trim() ??
     ''
+  const createdAt = rawCreatedAt.replace(/^["'\s\u201C\u201D]+|["'\s\u201C\u201D]+$/g, '')
   // タグは topics から取得（Zenn 形式）
   const tags = parseTopicsFromFrontmatter(frontmatter)
   // visibility: 明示指定 > Zenn の published > デフォルト public

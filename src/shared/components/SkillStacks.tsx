@@ -66,7 +66,8 @@ const SKILL_SECTIONS = [
     skills: [
       { name: '基本情報技術者', Icon: HiOutlineBadgeCheck, class: 'text-cyan-400' },
       { name: '応用情報技術者', Icon: HiOutlineBadgeCheck, class: 'text-cyan-400' },
-      { name: 'エンジニア認定データ分析実践', Icon: HiOutlineBadgeCheck, class: 'text-cyan-400' },
+      { name: 'python3 エンジニア認定データ分析実践試験', Icon: HiOutlineBadgeCheck, class: 'text-cyan-400' },
+      { name: 'AWS SAA', Icon: HiOutlineBadgeCheck, class: 'text-cyan-400' },
     ],
   },
 ] as const
@@ -75,7 +76,6 @@ export function SkillStacks() {
   return (
     <section className="pt-8 mt-8 border-t border-zinc-800">
       <h2 className="text-xl font-semibold text-zinc-200 mb-1">Skill Stacks</h2>
-      <p className="text-sm text-zinc-500 mb-6">習得した技術スタックをご紹介します</p>
       <div className="space-y-6">
         {SKILL_SECTIONS.map((section) => (
           <div key={section.title}>

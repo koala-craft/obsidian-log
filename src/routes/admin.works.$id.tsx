@@ -1,36 +1,33 @@
-import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
-import { getBlogPost } from '~/features/blog/api'
-import {
-  updateBlogPost,
-  deleteBlogPost,
-  prepareBlogContentForSave,
-  clearBlogTempAssets,
-} from '~/features/blog/blogAdminApi'
+import { getWorks, setWorks } from '~/features/works/worksApi'
 import { getSession } from '~/features/admin/auth'
-import { BlogEditor, type BlogEditorMeta } from '~/features/blog/BlogEditor'
-import { validateSlug } from '~/shared/lib/slug'
+import { WorkEditor, type WorkEditorMeta } from '~/features/works/WorkEditor'
 
-export const Route = createFileRoute('/admin/blog/$slug')({
-  component: AdminBlogEdit,
+export const Route = createFileRoute('/admin/works/$id')({
+  component: AdminWorksEdit,
   loader: async ({ params }) => {
-    const post = await getBlogPost({ data: { slug: params.slug } })
-    if (!post) throw notFound()
-    return { post }
+    const data = await getWorks()
+    const item = data.items.find((i) => i.id === params.id)
+    if (!item) throw notFound()
+    return { item }
   },
 })
 
-function AdminBlogEdit() {
-  const { post: initialPost } = Route.useLoaderData()
-  const navigate = useNavigate()
-  const [meta, setMeta] = useState<BlogEditorMeta>({
-    slug: initialPost.slug,
-    title: initialPost.title,
-    tags: initialPost.tags.join(', '),
-    visibility: initialPost.visibility,
-    firstView: initialPost.firstView,
+function AdminWorksEdit() {
+  const { item: initialItem } = Route.useLoaderData()
+  const [meta, setMeta] = useState<WorkEditorMeta>({
+    title: initialItem.title,
+    startDate: initialItem.startDate ?? '',
+    endDate: initialItem.endDate ?? '',
+    isCurrent: initialItem.isCurrent ?? false,
+    comingSoon: initialItem.comingSoon ?? false,
+    href: initialItem.href ?? '',
+    tags: (initialItem.tags ?? []).join(', '),
+    thumbnail: initialItem.thumbnail ?? '',
+    category: initialItem.category,
   })
-  const [content, setContent] = useState(initialPost.content)
+  const [content, setContent] = useState(initialItem.description ?? '')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -38,14 +35,18 @@ function AdminBlogEdit() {
 
   useEffect(() => {
     setMeta({
-      slug: initialPost.slug,
-      title: initialPost.title,
-      tags: initialPost.tags.join(', '),
-      visibility: initialPost.visibility,
-      firstView: initialPost.firstView,
+      title: initialItem.title,
+      startDate: initialItem.startDate ?? '',
+      endDate: initialItem.endDate ?? '',
+      isCurrent: initialItem.isCurrent ?? false,
+      comingSoon: initialItem.comingSoon ?? false,
+      href: initialItem.href ?? '',
+      tags: (initialItem.tags ?? []).join(', '),
+      thumbnail: initialItem.thumbnail ?? '',
+      category: initialItem.category,
     })
-    setContent(initialPost.content)
-  }, [initialPost])
+    setContent(initialItem.description ?? '')
+  }, [initialItem])
 
   const handleSave = useCallback(async () => {
     setMessage(null)
@@ -56,74 +57,62 @@ function AdminBlogEdit() {
     }
 
     setSaving(true)
-    const effectiveSlug =
-      meta.slug?.trim() && validateSlug(meta.slug.trim())
-        ? meta.slug.trim()
-        : initialPost.slug
-    const prepared = await prepareBlogContentForSave({
+    const data = await getWorks()
+    const updatedItems = data.items.map((i) =>
+      i.id === initialItem.id
+        ? {
+            ...i,
+            title: meta.title.trim(),
+            startDate: meta.startDate.trim() || undefined,
+            endDate: meta.endDate.trim() || undefined,
+            isCurrent: meta.isCurrent,
+            comingSoon: meta.comingSoon,
+            description: content.trim() || undefined,
+            href: meta.href.trim() || undefined,
+            tags: meta.tags
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean),
+            thumbnail: meta.thumbnail.trim() || undefined,
+            category: meta.category,
+          }
+        : i
+    )
+    const result = await setWorks({
       data: {
         accessToken: session.session.access_token,
         providerToken: session.session.provider_token ?? undefined,
-        slug: effectiveSlug,
-        content,
-        firstView: meta.firstView,
-      },
-    })
-    if (!prepared.success) {
-      setSaving(false)
-      setMessage({ type: 'error', text: prepared.error ?? '画像のアップロードに失敗しました' })
-      return
-    }
-
-    const result = await updateBlogPost({
-      data: {
-        accessToken: session.session.access_token,
-        providerToken: session.session.provider_token ?? undefined,
-        slug: initialPost.slug,
-        newSlug: effectiveSlug !== initialPost.slug ? effectiveSlug : undefined,
-        title: meta.title.trim() || effectiveSlug,
-        content: prepared.content,
-        tags: meta.tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean),
-        visibility: meta.visibility,
-        firstView: prepared.firstView,
-        previousFirstView: initialPost.firstView,
+        works: { items: updatedItems },
       },
     })
     setSaving(false)
 
     if (result.success) {
       setMessage({ type: 'success', text: '保存しました' })
-      setContent(prepared.content)
-      setMeta((m) => ({ ...m, slug: effectiveSlug, firstView: prepared.firstView }))
-      await clearBlogTempAssets({ data: { accessToken: session.session.access_token } })
-      if (effectiveSlug !== initialPost.slug) {
-        navigate({ to: '/admin/blog/$slug', params: { slug: effectiveSlug } })
-      }
     } else {
       setMessage({ type: 'error', text: result.error ?? '保存に失敗しました' })
     }
-  }, [initialPost.slug, meta, content, navigate])
+  }, [initialItem.id, meta, content])
 
   const handleDelete = async () => {
     const session = await getSession()
     if (!session) return
 
     setDeleting(true)
-    const result = await deleteBlogPost({
+    const data = await getWorks()
+    const updatedItems = data.items.filter((i) => i.id !== initialItem.id)
+    const result = await setWorks({
       data: {
         accessToken: session.session.access_token,
         providerToken: session.session.provider_token ?? undefined,
-        slug: initialPost.slug,
+        works: { items: updatedItems },
       },
     })
     setDeleting(false)
     setShowDeleteConfirm(false)
 
     if (result.success) {
-      window.location.href = '/admin/blog'
+      window.location.href = '/admin/works'
     } else {
       setMessage({ type: 'error', text: result.error ?? '削除に失敗しました' })
     }
@@ -133,11 +122,11 @@ function AdminBlogEdit() {
     <div className="-mx-4 -mb-8">
       <div className="flex items-center justify-between mb-4 px-4">
         <h1 className="text-xl font-semibold text-zinc-200 truncate">
-          編集: {initialPost.slug}
+          編集: {initialItem.title}
         </h1>
         <div className="flex items-center gap-3 shrink-0">
           <Link
-            to="/admin/blog"
+            to="/admin/works"
             className="text-sm text-zinc-500 hover:text-zinc-300"
           >
             一覧へ
@@ -145,7 +134,7 @@ function AdminBlogEdit() {
         </div>
       </div>
 
-      <BlogEditor
+      <WorkEditor
         meta={meta}
         onMetaChange={setMeta}
         content={content}
@@ -153,12 +142,7 @@ function AdminBlogEdit() {
         onSave={handleSave}
         saving={saving}
         message={message}
-        slug={
-          meta.slug?.trim() && validateSlug(meta.slug.trim())
-            ? meta.slug.trim()
-            : initialPost.slug
-        }
-        slugEditable
+        workId={initialItem.id}
         extraActions={
           <button
             type="button"
@@ -174,9 +158,9 @@ function AdminBlogEdit() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-zinc-800 rounded-lg p-6 max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-2">記事を削除しますか？</h3>
+            <h3 className="text-lg font-semibold mb-2">この項目を削除しますか？</h3>
             <p className="text-zinc-400 text-sm mb-4">
-              「{initialPost.title}」を削除すると元に戻せません。
+              「{initialItem.title}」を削除すると元に戻せません。
             </p>
             <div className="flex gap-2 justify-end">
               <button

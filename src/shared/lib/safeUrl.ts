@@ -29,7 +29,8 @@ export function isSafeImageUrl(url: string): boolean {
   if (
     (normalized.startsWith('blog/assets/') ||
       normalized.startsWith('content/blog/assets/') ||
-      normalized.startsWith('.obsidian-log/author-icon')) &&
+      normalized.startsWith('.obsidian-log/author-icon') ||
+      normalized.startsWith('.obsidian-log/works/')) &&
     /\.(png|jpg|jpeg|gif|webp)$/i.test(normalized)
   ) {
     return true
