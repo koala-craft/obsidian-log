@@ -6,6 +6,10 @@ const INPUT_STYLES =
 
 const LABEL_STYLES = 'block text-sm font-medium text-zinc-300 mb-1.5'
 
+function isHTMLFormElement(el: EventTarget | null): el is HTMLFormElement {
+  return el instanceof HTMLFormElement
+}
+
 export function ContactForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -53,12 +57,11 @@ export function ContactForm() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const form = e.currentTarget
-    if (form instanceof HTMLFormElement) {
-      if (!form.checkValidity()) {
-        form.reportValidity()
-        return
-      }
+    const target = e.currentTarget
+    if (!isHTMLFormElement(target)) return
+    if (!target.checkValidity()) {
+      target.reportValidity()
+      return
     }
     setShowConfirmModal(true)
   }
