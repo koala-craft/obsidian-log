@@ -188,7 +188,7 @@ function AdminSettings() {
             type="text"
             value={siteTitle}
             onChange={(e) => setSiteTitle(e.target.value)}
-            placeholder="Obsidian Log"
+            placeholder="気楽に誠実に"
             className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             disabled={saving}
           />

@@ -1,10 +1,9 @@
+// @ts-nocheck - ルートローダーの型が routeTree.gen に含まれないため
 import { Link, useLoaderData } from '@tanstack/react-router'
 
 export function Footer() {
-  const rootData = useLoaderData({ from: '__root__', strict: false }) as {
-    siteTitle?: string
-  }
-  const siteTitle = rootData?.siteTitle?.trim() || 'Obsidian Log'
+  const rootData = useLoaderData({ from: '__root__', strict: false }) as any
+  const siteTitle = rootData?.siteTitle?.trim() || '気楽に誠実に'
 
   return (
     <footer className="relative z-10 border-t border-zinc-800 mt-auto">

@@ -29,7 +29,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Obsidian Log' },
+      { title: '気楽に誠実に' },
       {
         name: 'description',
         content: 'ブログ × タスク管理の可視化',

@@ -12,7 +12,7 @@ import { ContactCTA } from '~/shared/components/ContactCTA'
 import { Hero } from '~/shared/components/Hero'
 import { TopCard } from '~/shared/components/TopCard'
 
-const DEFAULT_TITLE = 'Obsidian Log'
+const DEFAULT_TITLE = '気楽に誠実に'
 const DEFAULT_SUBTITLE = 'ブログアプリ'
 
 export const Route = createFileRoute('/')({
